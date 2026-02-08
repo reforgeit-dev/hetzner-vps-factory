@@ -2,6 +2,13 @@
 # User management role
 # Creates power user (admin) and application user (service account)
 
+# Pre-create supplementary groups (e.g. docker) that may not exist yet
+- name: Ensure supplementary groups exist
+  group:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ (power_user_groups + apps_user_groups) | unique }}"
+
 # Power user - for human admin access
 - name: Create power user group
   group:

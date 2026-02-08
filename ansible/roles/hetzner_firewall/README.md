@@ -6,7 +6,8 @@ Applies Hetzner Cloud firewall to block public SSH (Tailscale-only access).
 
 - Creates/updates Hetzner Cloud firewall via `hcloud` CLI
 - Blocks all inbound traffic except Tailscale UDP and ICMP
-- Verifies Tailscale SSH works before applying (safety check)
+- Fetches Tailscale host key via `ssh-keyscan` and updates `known_hosts` (safe on new/rebuilt VPS)
+- Verifies Tailscale SSH works before and after applying (safety check)
 - Attaches firewall to specified server
 
 ## Variables

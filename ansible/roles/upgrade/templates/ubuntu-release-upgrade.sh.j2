@@ -1,0 +1,111 @@
+#!/bin/bash
+# Ubuntu stepwise release upgrade
+# Runs as a systemd oneshot service on each boot.
+# Each cycle: fix packages -> dist-upgrade -> release-upgrade -> reboot
+# Repeats until target version is reached, then writes completion marker.
+set -u
+
+TARGET="{{ ubuntu_target_version }}"
+MAX_STEPS={{ max_upgrade_steps }}
+LOG="/var/log/ubuntu-release-upgrade.log"
+DONE_MARKER="/var/lib/ubuntu-upgrade-complete"
+STEP_FILE="/var/lib/ubuntu-upgrade-steps"
+
+export DEBIAN_FRONTEND=noninteractive
+
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
+
+finish() {
+    local msg="$1"
+    log "$msg"
+    echo "$msg" > "$DONE_MARKER"
+    systemctl disable ubuntu-release-upgrade.service 2>/dev/null || true
+}
+
+# Get Ubuntu version (lsb_release may be missing after upgrade)
+get_version() {
+    if command -v lsb_release &>/dev/null; then
+        lsb_release -rs 2>/dev/null
+    else
+        grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '"'
+    fi
+}
+
+CURRENT=$(get_version)
+log "=== Service started: current=$CURRENT target=$TARGET ==="
+
+# --- Already at target? ---
+if dpkg --compare-versions "$CURRENT" ge "$TARGET"; then
+    finish "SUCCESS: $CURRENT >= $TARGET"
+    exit 0
+fi
+
+# --- Step counter (prevents infinite reboot loops) ---
+if [ -f "$STEP_FILE" ]; then
+    REMAINING=$(cat "$STEP_FILE")
+else
+    REMAINING=$MAX_STEPS
+fi
+
+if [ "$REMAINING" -le 0 ]; then
+    finish "FAILED: max steps ($MAX_STEPS) exceeded at version $CURRENT"
+    exit 1
+fi
+echo $((REMAINING - 1)) > "$STEP_FILE"
+log "Steps remaining: $((REMAINING - 1))"
+
+# --- Fix broken packages from previous upgrade ---
+log "Fixing packages..."
+dpkg --configure -a >> "$LOG" 2>&1 || true
+apt-get -y --fix-broken install >> "$LOG" 2>&1 || true
+
+# --- Reinstall lsb-release if missing (needed for version checks) ---
+if ! command -v lsb_release &>/dev/null; then
+    log "Reinstalling lsb-release..."
+    apt-get -y install lsb-release >> "$LOG" 2>&1 || true
+fi
+
+# --- Full dist-upgrade to complete any partial upgrade ---
+log "Running dist-upgrade..."
+apt-get update >> "$LOG" 2>&1 || true
+apt-get -y dist-upgrade >> "$LOG" 2>&1 || true
+apt-get -y autoremove >> "$LOG" 2>&1 || true
+
+# --- Reboot first if required (do-release-upgrade refuses otherwise) ---
+if [ -f /var/run/reboot-required ]; then
+    log "Reboot required before upgrade, rebooting..."
+    reboot
+    exit 0
+fi
+
+# --- Re-check version after dist-upgrade ---
+CURRENT=$(get_version)
+log "Post-fixup version: $CURRENT"
+if dpkg --compare-versions "$CURRENT" ge "$TARGET"; then
+    finish "SUCCESS: reached $CURRENT after dist-upgrade"
+    exit 0
+fi
+
+# --- Configure upgrade channel ---
+{% if not ubuntu_target_version.endswith('.04') %}
+sed -i 's/^Prompt=.*/Prompt=normal/' /etc/update-manager/release-upgrades
+{% endif %}
+
+apt-get -y install update-manager-core >> "$LOG" 2>&1
+
+# --- Check if an upgrade path exists ---
+if ! do-release-upgrade -c >> "$LOG" 2>&1; then
+    finish "FAILED: no upgrade available from $CURRENT"
+    exit 1
+fi
+
+# --- Run the release upgrade ---
+log "Running do-release-upgrade from $CURRENT..."
+if do-release-upgrade -f DistUpgradeViewNonInteractive >> "$LOG" 2>&1; then
+    log "do-release-upgrade completed successfully"
+else
+    log "do-release-upgrade exited with error (may still need reboot to finalize)"
+fi
+
+log "Rebooting after upgrade..."
+reboot

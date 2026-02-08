@@ -22,6 +22,10 @@ HOST_VARS_DIR="${REPO_ROOT}/ansible/host_vars"
 # SSH timeout for connectivity tests
 SSH_TIMEOUT=5
 
+# Retry settings for auto-detect mode (new VPS may need time to boot)
+MAX_RETRIES=3
+RETRY_DELAY=10
+
 # Parse arguments
 MODE="auto"
 PROFILE="immich"
@@ -148,13 +152,24 @@ detect_server_state() {
 
 # Determine actual mode
 if [ "$MODE" == "auto" ]; then
-    DETECTION_RESULT=$(detect_server_state)
-    DETECTED_MODE=$(echo "$DETECTION_RESULT" | tail -1 | cut -d: -f1)
-    DETECTED_METHOD=$(echo "$DETECTION_RESULT" | tail -1 | cut -d: -f2)
+    for attempt in $(seq 1 "$MAX_RETRIES"); do
+        DETECTION_RESULT=$(detect_server_state)
+        DETECTED_MODE=$(echo "$DETECTION_RESULT" | tail -1 | cut -d: -f1)
+        DETECTED_METHOD=$(echo "$DETECTION_RESULT" | tail -1 | cut -d: -f2)
+
+        if [ "$DETECTED_MODE" != "error" ]; then
+            break
+        fi
+
+        if [ "$attempt" -lt "$MAX_RETRIES" ]; then
+            echo "  Waiting for SSH to become available... (attempt $((attempt + 1))/$MAX_RETRIES)"
+            sleep "$RETRY_DELAY"
+        fi
+    done
 
     if [ "$DETECTED_MODE" == "error" ]; then
         echo ""
-        echo "Error: Could not connect to server via any method"
+        echo "Error: Could not connect to server via any method after $MAX_RETRIES attempts"
         echo ""
         echo "Tried:"
         echo "  - $POWER_USER@$TAILSCALE_HOSTNAME (Tailscale)"

@@ -1,90 +1,108 @@
 ---
 # Ubuntu release upgrade role
-# Upgrades from current release to target release (e.g., 24.04 -> 25.10)
-# Note: Upgrading to non-LTS requires stepping through each release
+# Deploys a self-rebooting systemd service that steps through intermediate
+# releases until the target version is reached. Ansible waits for the
+# completion marker, then verifies and cleans up.
 #
-# IMPORTANT: do-release-upgrade stops SSH during the upgrade, which breaks
-# Ansible connections. This role uses a fire-and-forget approach:
-# 1. Start upgrade in tmux session (survives SSH disconnect)
-# 2. Force immediate reboot after upgrade completes
-# 3. Wait for server to come back
-# 4. Verify upgrade succeeded
-#
-# Prerequisites: tmux must be installed (from common role)
+# All post-upgrade checks use raw (no Python dependency) since release
+# upgrades change the Python version and break compiled extensions.
 
 - name: Check current Ubuntu version
-  command: lsb_release -rs
+  raw: lsb_release -rs 2>/dev/null | tail -1
   register: current_version
   changed_when: false
 
-- name: Display current version
+- name: Display upgrade plan
   debug:
-    msg: "Current Ubuntu version: {{ current_version.stdout }}"
+    msg: "Current: {{ current_version.stdout | trim }} | Target: {{ ubuntu_target_version }}"
 
-- name: Skip if already on target version
+- name: Skip if already at or above target version
   meta: end_play
-  when: current_version.stdout == ubuntu_target_version
+  when: current_version.stdout | trim is version(ubuntu_target_version, '>=')
 
-- name: Update all packages before upgrade
-  apt:
-    update_cache: yes
-    upgrade: dist
-    autoremove: yes
-    autoclean: yes
+- name: Deploy upgrade script
+  template:
+    src: ubuntu-release-upgrade.sh.j2
+    dest: /usr/local/bin/ubuntu-release-upgrade
+    mode: '0755'
 
-- name: Install update-manager-core
-  apt:
-    name: update-manager-core
-    state: present
+- name: Deploy upgrade service
+  template:
+    src: ubuntu-release-upgrade.service.j2
+    dest: /etc/systemd/system/ubuntu-release-upgrade.service
 
-- name: Allow non-LTS upgrades
-  lineinfile:
-    path: /etc/update-manager/release-upgrades
-    regexp: '^Prompt='
-    line: 'Prompt=normal'
-  when: not ubuntu_target_version.endswith('.04')
+- name: Enable upgrade service
+  systemd:
+    name: ubuntu-release-upgrade
+    enabled: yes
+    daemon_reload: yes
 
-# Fire-and-forget: Start upgrade in tmux, then reboot
-# The upgrade will continue even when SSH connection is lost
-- name: Start release upgrade in tmux session
-  shell: |
-    tmux new-session -d -s upgrade '
-      do-release-upgrade -f DistUpgradeViewNonInteractive && \
-      sleep 10 && \
-      reboot
-    '
-  async: 10
-  poll: 0
+- name: Start first upgrade cycle
+  raw: systemctl start --no-block ubuntu-release-upgrade
+  changed_when: true
 
-- name: Wait for upgrade to start
-  pause:
-    seconds: 30
-    prompt: "Release upgrade started in screen session. SSH will disconnect during upgrade..."
+- name: Upgrade in progress
+  debug:
+    msg: |
+      WARNING: Ubuntu release upgrade is now running as a systemd service on the server.
+      The upgrade continues independently even if you cancel Ansible (Ctrl+C).
+      This can take 10-30+ minutes depending on the number of intermediate releases.
+      The server will reboot one or more times during the process.
 
-# Expect connection to be lost - wait for server to come back after reboot
-- name: Wait for server to reboot and come back
-  wait_for_connection:
-    delay: 60
-    timeout: 1800
-    sleep: 30
-  register: reconnect_result
-  ignore_errors: yes
+      Polling every 30s for up to {{ upgrade_timeout_minutes }} minutes.
+      If Ansible times out, the upgrade may still be running on the server.
+      Monitor on server: sudo journalctl -u ubuntu-release-upgrade -f
+      Server log: /var/log/ubuntu-release-upgrade.log
 
-- name: Fail if server did not come back
-  fail:
-    msg: "Server did not come back after upgrade. Check via Hetzner Console."
-  when: reconnect_result is failed
+# Poll for the completion marker. The server reboots between each upgrade
+# step; ignore_unreachable rides through the connection drops.
+# The poll command outputs current status on each attempt for visibility.
+- name: Wait for upgrade to complete
+  raw: |
+    if [ -f /var/lib/ubuntu-upgrade-complete ]; then
+      echo "DONE: $(cat /var/lib/ubuntu-upgrade-complete)"
+      exit 0
+    fi
+    VER=$(grep VERSION_ID /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "?")
+    SVC=$(systemctl is-active ubuntu-release-upgrade.service 2>/dev/null || echo "unknown")
+    STEP=$(cat /var/lib/ubuntu-upgrade-steps 2>/dev/null || echo "?")
+    echo "PENDING: version=$VER service=$SVC steps_left=$STEP"
+    exit 1
+  register: _upgrade_poll
+  until: _upgrade_poll.rc is defined and _upgrade_poll.rc == 0
+  retries: "{{ (upgrade_timeout_minutes | int * 2) }}"
+  delay: 30
+  changed_when: false
+  ignore_unreachable: true
 
-- name: Verify new version
-  command: lsb_release -rs
-  register: new_version
+- name: Read completion marker
+  raw: cat /var/lib/ubuntu-upgrade-complete
+  register: upgrade_result
   changed_when: false
 
-- name: Check if upgrade succeeded
-  debug:
-    msg: "Ubuntu upgraded: {{ current_version.stdout }} -> {{ new_version.stdout }}"
+- name: Check final version
+  raw: lsb_release -rs 2>/dev/null | tail -1
+  register: final_version
+  changed_when: false
 
-- name: Warn if version unchanged
+- name: Clean up upgrade artifacts
+  raw: |
+    systemctl disable ubuntu-release-upgrade.service 2>/dev/null || true
+    rm -f /usr/local/bin/ubuntu-release-upgrade \
+          /etc/systemd/system/ubuntu-release-upgrade.service \
+          /var/lib/ubuntu-upgrade-complete \
+          /var/lib/ubuntu-upgrade-steps
+    systemctl daemon-reload
+  changed_when: true
+
+- name: Display upgrade result
   debug:
-    msg: "WARNING: Version unchanged. Check /var/log/dist-upgrade/ for errors."
-  when: current_version.stdout == new_version.stdout
+    msg: "Ubuntu upgraded: {{ current_version.stdout | trim }} -> {{ final_version.stdout | trim }} ({{ upgrade_result.stdout | trim }})"
+
+- name: Fail if target not reached
+  fail:
+    msg: |
+      Target {{ ubuntu_target_version }} not reached (current: {{ final_version.stdout | trim }}).
+      Result: {{ upgrade_result.stdout | trim }}
+      Check server log: /var/log/ubuntu-release-upgrade.log
+  when: final_version.stdout | trim is version(ubuntu_target_version, '<')

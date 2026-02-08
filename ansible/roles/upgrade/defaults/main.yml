@@ -1,3 +1,10 @@
 ---
 # Target Ubuntu version
 ubuntu_target_version: "25.10"
+
+# Maximum number of upgrade steps (prevents infinite reboot loops)
+max_upgrade_steps: 5
+
+# How long to wait for the entire upgrade process (minutes)
+# 15 min = 30 retries at 30s intervals; increase for multi-step upgrades
+upgrade_timeout_minutes: 15

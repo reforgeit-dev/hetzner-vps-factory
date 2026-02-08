@@ -351,7 +351,7 @@ else
                         ansible-playbook -i inventory.ini playbooks/upgrade.yml -v
                         echo "Waiting for reboot..."
                         sleep 30
-                        ansible all -i inventory.ini -m ping --retries=10 --delay=15 || true
+                        for i in 1 2 3; do ansible all -i inventory.ini -m ping && break || sleep 15; done
                     fi
                 fi
             fi

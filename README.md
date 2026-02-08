@@ -64,15 +64,20 @@ hetzner-vps-factory/
 ```bash
 export HCLOUD_TOKEN="your-hetzner-api-token"
 export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"
+
+# Any Terraform variable can also be set via environment:
+export TF_VAR_server_name="my-server"
+export TF_VAR_server_type="cx33"
+export TF_VAR_location="hel1"
 ```
+
+### Terraform State Backend
+
+S3 backend (`terraform/backend.tf`) is optional but recommended for shared/persistent state. To use local state instead, remove or comment out `backend.tf` and run `terraform init`.
 
 ## Quick Start
 
 ```bash
-# Configure
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# Edit terraform.tfvars with your values
-
 # Deploy (immich profile by default)
 ./scripts/deploy.sh
 
@@ -143,9 +148,11 @@ install_swap: false       # Skip swap
 
 ## Troubleshooting
 
-**Terraform init fails**: Check AWS credentials for S3 backend.
+**Terraform init fails**: Check S3 backend credentials, or remove `backend.tf` to use local state.
 
 **Ansible connectivity fails**: Wait for VPS boot, check SSH key permissions, re-run `./scripts/generate_inventory.sh`.
+
+**SSH fails on brand-new server**: Hetzner VPS needs ~15-30 seconds after creation before SSH is ready. Both `deploy.sh` and `generate_inventory.sh --mode auto` will automatically retry for up to 30 seconds (3 attempts, 10s apart) while waiting for SSH to become available.
 
 **Locked out (firewall)**: Hetzner Console -> Firewalls -> `tailscale-only` -> Add TCP 22 from 0.0.0.0/0 -> SSH in -> Fix -> Remove rule.
 

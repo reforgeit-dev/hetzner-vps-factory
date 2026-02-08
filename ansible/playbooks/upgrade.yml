@@ -5,13 +5,12 @@
 # Usage:
 #   ansible-playbook -i inventory.ini playbooks/upgrade.yml
 #
-# Note: For 24.04 -> 25.10, you may need to run this twice:
-#   24.04 -> 24.10 -> 25.04 -> 25.10
-#   Ubuntu only allows upgrading to the next release, not skipping.
+# Steps through intermediate releases automatically (e.g., 24.04 -> 24.10 -> 25.04 -> 25.10)
+# via a self-rebooting systemd service. Single run handles the full upgrade path.
 
 - name: Upgrade Ubuntu
   hosts: hetzner_vps
-  gather_facts: true
+  gather_facts: false
   become: true
 
   pre_tasks:
@@ -25,5 +24,5 @@
 
   post_tasks:
     - name: Show final version
-      command: lsb_release -a
+      raw: lsb_release -a
       changed_when: false

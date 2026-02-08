@@ -9,6 +9,21 @@
   changed_when: false
   failed_when: ts_status.rc != 0
 
+- name: Fetch Tailscale host key
+  delegate_to: localhost
+  command: ssh-keyscan {{ tailscale_hostname }}
+  register: tailscale_host_key
+  changed_when: false
+
+- name: Update known_hosts for Tailscale hostname
+  delegate_to: localhost
+  known_hosts:
+    name: "{{ tailscale_hostname }}"
+    key: "{{ item }}"
+    state: present
+  loop: "{{ tailscale_host_key.stdout_lines | select('match', '^[^#]') | list }}"
+  when: item | length > 0
+
 - name: Test SSH via Tailscale from control machine
   delegate_to: localhost
   command: ssh -o ConnectTimeout=10 -o BatchMode=yes {{ power_user_name }}@{{ tailscale_hostname }} "echo 'Tailscale SSH OK'"
