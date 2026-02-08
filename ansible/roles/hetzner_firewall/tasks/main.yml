@@ -1,0 +1,140 @@
+---
+# Hetzner Cloud Firewall role
+# Applies firewall blocking public SSH after Tailscale is verified working
+# Runs on localhost using hcloud CLI
+
+- name: Verify Tailscale is working before locking down
+  command: tailscale status
+  register: ts_status
+  changed_when: false
+  failed_when: ts_status.rc != 0
+
+- name: Test SSH via Tailscale from control machine
+  delegate_to: localhost
+  command: ssh -o ConnectTimeout=10 -o BatchMode=yes {{ power_user_name }}@{{ tailscale_hostname }} "echo 'Tailscale SSH OK'"
+  register: tailscale_ssh_test
+  changed_when: false
+  when: verify_tailscale_ssh | default(true)
+
+- name: Check if hcloud CLI is available
+  delegate_to: localhost
+  command: which hcloud
+  register: hcloud_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail if hcloud CLI not installed
+  fail:
+    msg: "hcloud CLI not found. Install with: brew install hcloud (macOS) or see https://github.com/hetznercloud/cli"
+  when: hcloud_check.rc != 0
+
+- name: Check if firewall exists
+  delegate_to: localhost
+  command: hcloud firewall describe {{ firewall_name }} -o json
+  register: firewall_info
+  changed_when: false
+  failed_when: false
+  environment:
+    HCLOUD_TOKEN: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
+
+- name: Create Hetzner firewall
+  delegate_to: localhost
+  command: >
+    hcloud firewall create
+    --name {{ firewall_name }}
+    --label env=homelab
+  when: firewall_info.rc != 0
+  environment:
+    HCLOUD_TOKEN: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
+
+- name: Get current firewall rules
+  delegate_to: localhost
+  command: hcloud firewall describe {{ firewall_name }} -o json
+  register: firewall_current
+  changed_when: false
+  environment:
+    HCLOUD_TOKEN: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
+
+- name: Parse existing rules
+  set_fact:
+    existing_rules: "{{ (firewall_current.stdout | from_json).rules | default([]) }}"
+
+- name: Check if Tailscale UDP rule exists
+  set_fact:
+    tailscale_rule_exists: "{{ existing_rules | selectattr('protocol', 'equalto', 'udp') | selectattr('port', 'equalto', '41641') | list | length > 0 }}"
+
+- name: Check if ICMP rule exists
+  set_fact:
+    icmp_rule_exists: "{{ existing_rules | selectattr('protocol', 'equalto', 'icmp') | list | length > 0 }}"
+
+- name: Add Tailscale UDP rule
+  delegate_to: localhost
+  command: >
+    hcloud firewall add-rule {{ firewall_name }}
+    --direction in
+    --protocol udp
+    --port 41641
+    --source-ips 0.0.0.0/0
+    --source-ips ::/0
+    --description "Tailscale"
+  when: not tailscale_rule_exists
+  environment:
+    HCLOUD_TOKEN: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
+
+- name: Add ICMP rule
+  delegate_to: localhost
+  command: >
+    hcloud firewall add-rule {{ firewall_name }}
+    --direction in
+    --protocol icmp
+    --source-ips 0.0.0.0/0
+    --source-ips ::/0
+    --description "ICMP ping"
+  when: not icmp_rule_exists
+  environment:
+    HCLOUD_TOKEN: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
+
+- name: Check if firewall is applied to server
+  delegate_to: localhost
+  shell: |
+    hcloud firewall describe {{ firewall_name }} -o json | jq -e '.applied_to[] | select(.server.name == "{{ hetzner_server_name }}")' > /dev/null 2>&1
+  register: firewall_applied
+  changed_when: false
+  failed_when: false
+  environment:
+    HCLOUD_TOKEN: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
+
+- name: Apply firewall to server
+  delegate_to: localhost
+  command: >
+    hcloud firewall apply-to-resource {{ firewall_name }}
+    --type server
+    --server {{ hetzner_server_name }}
+  register: apply_result
+  changed_when: apply_result.rc == 0
+  failed_when: apply_result.rc != 0 and 'firewall_already_applied' not in apply_result.stderr
+  when: firewall_applied.rc != 0
+  environment:
+    HCLOUD_TOKEN: "{{ lookup('env', 'HCLOUD_TOKEN') }}"
+
+- name: Verify SSH still works via Tailscale after firewall
+  delegate_to: localhost
+  command: ssh -o ConnectTimeout=10 -o BatchMode=yes {{ power_user_name }}@{{ tailscale_hostname }} "echo 'Post-firewall SSH OK'"
+  register: post_firewall_test
+  changed_when: false
+  retries: 3
+  delay: 5
+
+- name: Display firewall status
+  debug:
+    msg: |
+      Hetzner Firewall '{{ firewall_name }}' applied to '{{ hetzner_server_name }}'
+
+      Public access: BLOCKED (except Tailscale UDP 41641)
+      SSH access: Tailscale only ({{ tailscale_hostname }})
+
+      Recovery if locked out:
+        1. Hetzner Console → Firewalls → {{ firewall_name }}
+        2. Add rule: TCP 22 from 0.0.0.0/0
+        3. SSH via public IP, fix issue
+        4. Remove TCP 22 rule

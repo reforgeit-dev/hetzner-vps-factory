@@ -1,0 +1,41 @@
+---
+- name: Set UFW defaults
+  ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: incoming, policy: "{{ ufw_default_incoming }}" }
+    - { direction: outgoing, policy: "{{ ufw_default_outgoing }}" }
+
+- name: Allow ports
+  ufw:
+    rule: allow
+    port: "{{ item.port | string }}"
+    proto: "{{ item.proto }}"
+  loop: "{{ ufw_allow_rules }}"
+
+- name: Rate limit SSH
+  ufw:
+    rule: limit
+    port: "{{ ufw_ssh_port | string }}"
+    proto: tcp
+  when: ufw_rate_limit_ssh
+
+- name: Allow SSH from whitelisted subnets (no rate limit, inserted before limit rule)
+  ufw:
+    rule: allow
+    port: "{{ ufw_ssh_port | string }}"
+    proto: tcp
+    from_ip: "{{ item }}"
+    insert: 1
+  loop: "{{ ufw_ssh_whitelist_subnets }}"
+  when: ufw_rate_limit_ssh and ufw_ssh_whitelist_subnets | length > 0
+
+- name: Enable UFW logging
+  ufw:
+    logging: 'on'
+  when: ufw_logging
+
+- name: Enable UFW
+  ufw:
+    state: enabled

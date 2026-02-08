@@ -1,0 +1,3 @@
+---
+# Common role handlers
+# SSH and fail2ban handlers moved to their respective roles

@@ -1,0 +1,90 @@
+---
+# Ubuntu release upgrade role
+# Upgrades from current release to target release (e.g., 24.04 -> 25.10)
+# Note: Upgrading to non-LTS requires stepping through each release
+#
+# IMPORTANT: do-release-upgrade stops SSH during the upgrade, which breaks
+# Ansible connections. This role uses a fire-and-forget approach:
+# 1. Start upgrade in tmux session (survives SSH disconnect)
+# 2. Force immediate reboot after upgrade completes
+# 3. Wait for server to come back
+# 4. Verify upgrade succeeded
+#
+# Prerequisites: tmux must be installed (from common role)
+
+- name: Check current Ubuntu version
+  command: lsb_release -rs
+  register: current_version
+  changed_when: false
+
+- name: Display current version
+  debug:
+    msg: "Current Ubuntu version: {{ current_version.stdout }}"
+
+- name: Skip if already on target version
+  meta: end_play
+  when: current_version.stdout == ubuntu_target_version
+
+- name: Update all packages before upgrade
+  apt:
+    update_cache: yes
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+
+- name: Install update-manager-core
+  apt:
+    name: update-manager-core
+    state: present
+
+- name: Allow non-LTS upgrades
+  lineinfile:
+    path: /etc/update-manager/release-upgrades
+    regexp: '^Prompt='
+    line: 'Prompt=normal'
+  when: not ubuntu_target_version.endswith('.04')
+
+# Fire-and-forget: Start upgrade in tmux, then reboot
+# The upgrade will continue even when SSH connection is lost
+- name: Start release upgrade in tmux session
+  shell: |
+    tmux new-session -d -s upgrade '
+      do-release-upgrade -f DistUpgradeViewNonInteractive && \
+      sleep 10 && \
+      reboot
+    '
+  async: 10
+  poll: 0
+
+- name: Wait for upgrade to start
+  pause:
+    seconds: 30
+    prompt: "Release upgrade started in screen session. SSH will disconnect during upgrade..."
+
+# Expect connection to be lost - wait for server to come back after reboot
+- name: Wait for server to reboot and come back
+  wait_for_connection:
+    delay: 60
+    timeout: 1800
+    sleep: 30
+  register: reconnect_result
+  ignore_errors: yes
+
+- name: Fail if server did not come back
+  fail:
+    msg: "Server did not come back after upgrade. Check via Hetzner Console."
+  when: reconnect_result is failed
+
+- name: Verify new version
+  command: lsb_release -rs
+  register: new_version
+  changed_when: false
+
+- name: Check if upgrade succeeded
+  debug:
+    msg: "Ubuntu upgraded: {{ current_version.stdout }} -> {{ new_version.stdout }}"
+
+- name: Warn if version unchanged
+  debug:
+    msg: "WARNING: Version unchanged. Check /var/log/dist-upgrade/ for errors."
+  when: current_version.stdout == new_version.stdout

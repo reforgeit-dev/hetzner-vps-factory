@@ -1,0 +1,14 @@
+---
+# Tailscale role defaults
+
+# Tailscale auth key (required, set via environment variable or group_vars)
+# Use a reusable or ephemeral key from https://login.tailscale.com/admin/settings/keys
+tailscale_auth_key: "{{ lookup('env', 'TAILSCALE_AUTH_KEY') }}"
+
+# Hostname to register in Tailscale network
+# Recommend using pattern: <server>-<location>-<provider>
+tailscale_hostname: "{{ ansible_hostname }}"
+
+# Additional tailscale up flags (optional)
+# Example: "--accept-routes --advertise-exit-node"
+tailscale_extra_args: ""

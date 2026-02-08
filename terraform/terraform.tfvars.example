@@ -1,0 +1,21 @@
+# Hetzner Cloud API token
+# Get from: https://console.hetzner.cloud/ -> Project -> Security -> API Tokens
+# Or set env: export TF_VAR_hcloud_token="your-token"
+# hcloud_token = "your-hetzner-api-token"
+
+# Server configuration
+server_name = "homebox"
+server_type = "cx33"           # cx33 = 4vCPU, 8GB RAM, 80GB SSD (~€7/mo)
+location    = "hel1"           # hel1 = Helsinki, nbg1 = Nuremberg, fsn1 = Falkenstein
+os_image    = "ubuntu-24.04"
+
+# Automatic daily backups (keeps last 7, +20% of server cost)
+backups_enabled = true
+
+# SSH public key path
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+
+# Tailscale auth key (not API key!)
+# Get from: https://login.tailscale.com/admin/settings/keys -> Generate auth key
+# Or set env: export TF_VAR_tailscale_auth_key="tskey-auth-..."
+# tailscale_auth_key = "tskey-auth-xxxxx"

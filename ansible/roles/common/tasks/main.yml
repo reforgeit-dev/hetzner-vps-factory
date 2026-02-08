@@ -1,0 +1,50 @@
+---
+# Common role tasks
+# Base system configuration: packages and unattended upgrades
+# SSH hardening and fail2ban are now in dedicated roles
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    autoclean: yes
+    autoremove: yes
+  when: apt_upgrade_on_provision
+
+- name: Install base packages
+  apt:
+    name: "{{ apt_packages }}"
+    state: present
+
+- name: Configure unattended-upgrades
+  lineinfile:
+    path: /etc/apt/apt.conf.d/50unattended-upgrades
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    create: yes
+  loop:
+    - regexp: '^.*Unattended-Upgrade::Automatic-Reboot\s'
+      line: 'Unattended-Upgrade::Automatic-Reboot "{{ unattended_upgrades_auto_reboot | lower }}";'
+    - regexp: '^.*Unattended-Upgrade::Automatic-Reboot-Time\s'
+      line: 'Unattended-Upgrade::Automatic-Reboot-Time "{{ unattended_upgrades_reboot_time }}";'
+    - regexp: '^.*Unattended-Upgrade::Remove-Unused-Dependencies\s'
+      line: 'Unattended-Upgrade::Remove-Unused-Dependencies "{{ unattended_upgrades_autoremove | lower }}";'
+  when: unattended_upgrades_enabled
+
+- name: Enable automatic upgrades
+  template:
+    src: 20auto-upgrades.j2
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    mode: '0644'
+  when: unattended_upgrades_enabled
+
+- name: Ensure unattended-upgrades service is enabled
+  service:
+    name: unattended-upgrades
+    enabled: yes
+    state: started
+  when: unattended_upgrades_enabled

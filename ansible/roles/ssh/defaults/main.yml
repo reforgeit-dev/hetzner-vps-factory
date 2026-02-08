@@ -1,0 +1,23 @@
+---
+# SSH hardening role defaults
+
+# Disable password authentication (key-only)
+ssh_password_authentication: "no"
+
+# Disable empty passwords
+ssh_permit_empty_passwords: "no"
+
+# Maximum authentication attempts per connection
+ssh_max_auth_tries: 3
+
+# Client keepalive interval (seconds)
+ssh_client_alive_interval: 300
+
+# Client keepalive count before disconnect
+ssh_client_alive_count_max: 2
+
+# Disable X11 forwarding (reduce attack surface)
+ssh_x11_forwarding: "no"
+
+# PermitRootLogin is handled by users role after power user is created
+# to avoid lockout during initial provisioning

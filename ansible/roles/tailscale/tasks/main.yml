@@ -1,0 +1,57 @@
+---
+- name: Create keyrings directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Add Tailscale GPG key
+  get_url:
+    url: https://pkgs.tailscale.com/stable/ubuntu/{{ ansible_facts['distribution_release'] }}.noarmor.gpg
+    dest: /etc/apt/keyrings/tailscale.gpg
+    mode: '0644'
+
+- name: Add Tailscale repository
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/tailscale.gpg] https://pkgs.tailscale.com/stable/ubuntu {{ ansible_facts['distribution_release'] }} main"
+    state: present
+
+- name: Install Tailscale
+  apt:
+    name: tailscale
+    state: present
+    update_cache: yes
+
+- name: Enable Tailscale service
+  service:
+    name: tailscaled
+    enabled: yes
+    state: started
+
+- name: Check Tailscale status
+  command: tailscale status
+  register: ts_status
+  changed_when: false
+  failed_when: false
+
+- name: Authenticate with Tailscale
+  command: >
+    tailscale up
+    --authkey={{ tailscale_auth_key }}
+    --hostname={{ tailscale_hostname }}
+    {{ tailscale_extra_args }}
+  when: ts_status.rc != 0 or 'Logged out' in ts_status.stderr
+  no_log: true
+
+- name: Get current Tailscale hostname
+  command: tailscale status --json
+  register: ts_status_json
+  changed_when: false
+  failed_when: false
+
+- name: Set Tailscale hostname
+  command: tailscale set --hostname={{ tailscale_hostname }}
+  when: >
+    ts_status_json.rc == 0 and
+    (ts_status_json.stdout | from_json).Self.HostName != tailscale_hostname
+  changed_when: true

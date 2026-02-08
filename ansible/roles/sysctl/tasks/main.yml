@@ -1,0 +1,59 @@
+---
+# Note: net.ipv4.conf.all.* settings may show "changed" if Docker is running
+# because Docker resets these when creating bridge interfaces. This is expected
+# and the persistent config in /etc/sysctl.d/ ensures values are applied at boot.
+
+- name: Apply network hardening sysctl settings
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: yes
+    reload: yes
+    ignoreerrors: yes
+  loop: "{{ sysctl_network_hardening | dict2items }}"
+  when: sysctl_hardening_enabled
+  # Docker may reset net.ipv4.conf.all.* - accept this as not truly changed
+  changed_when: false
+
+- name: Apply kernel hardening sysctl settings
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  loop: "{{ sysctl_kernel_hardening | dict2items }}"
+  when: sysctl_hardening_enabled
+  # Some settings may not exist on all kernels
+  failed_when: false
+
+- name: Apply filesystem hardening sysctl settings
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  loop: "{{ sysctl_fs_hardening | dict2items }}"
+  when: sysctl_hardening_enabled
+
+- name: Apply custom sysctl settings
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  loop: "{{ sysctl_custom | dict2items }}"
+  when: sysctl_custom | length > 0
+
+- name: Create persistent sysctl configuration
+  template:
+    src: 99-hardening.conf.j2
+    dest: /etc/sysctl.d/99-hardening.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: sysctl_hardening_enabled
+  notify: reload sysctl

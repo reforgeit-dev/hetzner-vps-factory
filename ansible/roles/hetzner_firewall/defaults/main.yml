@@ -1,0 +1,12 @@
+---
+# Hetzner Firewall configuration
+
+# Firewall name in Hetzner Cloud
+firewall_name: "tailscale-only"
+
+# Server name to apply firewall to (must match Hetzner server name)
+# Override in group_vars/all.yml for your deployment
+hetzner_server_name: "{{ inventory_hostname }}"
+
+# Verify Tailscale SSH before applying (recommended)
+verify_tailscale_ssh: true

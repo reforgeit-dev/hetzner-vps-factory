@@ -1,0 +1,50 @@
+# Local .terraform directories
+.terraform/
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+**.log
+# Exclude all .tfvars files (sensitive data)
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+!terraform/envs/*.tfvars
+
+# Terraform plan files
+tfplan
+*.tfplan
+
+# Terraform output files
+terraform_output.json
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Lock info files
+.terraform.tfstate.lock.info
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Ansible
+ansible/inventory.ini
+ansible/host_vars/
+*.retry
+ansible/logs/*.log
+ansible.log
+
+# SSH keys
+*.pem
+id_rsa
+id_ed25519
+*.pub
+!*.pub.example

@@ -1,0 +1,23 @@
+---
+# fail2ban installation and configuration
+# Provides brute-force protection for SSH
+
+- name: Install fail2ban
+  apt:
+    name: fail2ban
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Configure fail2ban SSH jail
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: '0644'
+  notify: restart fail2ban
+
+- name: Ensure fail2ban service is enabled and running
+  service:
+    name: fail2ban
+    enabled: true
+    state: started

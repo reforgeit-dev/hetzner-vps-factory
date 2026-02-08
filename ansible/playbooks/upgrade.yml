@@ -1,0 +1,29 @@
+---
+# Ubuntu upgrade playbook
+# Run separately from main site.yml as it requires reboot
+#
+# Usage:
+#   ansible-playbook -i inventory.ini playbooks/upgrade.yml
+#
+# Note: For 24.04 -> 25.10, you may need to run this twice:
+#   24.04 -> 24.10 -> 25.04 -> 25.10
+#   Ubuntu only allows upgrading to the next release, not skipping.
+
+- name: Upgrade Ubuntu
+  hosts: hetzner_vps
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: Wait for connection
+      wait_for_connection:
+        timeout: 300
+
+  roles:
+    - role: upgrade
+      tags: [upgrade]
+
+  post_tasks:
+    - name: Show final version
+      command: lsb_release -a
+      changed_when: false

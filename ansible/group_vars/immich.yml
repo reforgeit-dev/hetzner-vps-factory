@@ -1,0 +1,16 @@
+---
+# Profile: Immich (Coolify + photo library)
+# Applied to hosts in the [immich] inventory group
+
+# Tailscale — set to your desired Tailscale hostname
+tailscale_hostname: "my-server"
+
+# Hetzner Firewall — must match server_name in terraform/envs/immich.tfvars
+hetzner_server_name: "my-immich-server"
+
+# Users - Coolify needs root SSH access to localhost
+disable_root_ssh: false
+
+# Storage Box - directories to create after mounting
+storagebox_directories:
+  - immich

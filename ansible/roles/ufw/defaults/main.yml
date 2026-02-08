@@ -1,0 +1,27 @@
+---
+# UFW role defaults
+
+# Default firewall policies
+ufw_default_incoming: deny
+ufw_default_outgoing: allow
+
+# Ports to allow through firewall
+# Format: { port: <port>, proto: <tcp|udp> }
+ufw_allow_rules:
+  - { port: 22, proto: tcp }       # SSH
+  - { port: 41641, proto: udp }   # Tailscale
+
+# Enable rate limiting on SSH to prevent brute force
+ufw_rate_limit_ssh: true
+
+# SSH port for rate limiting (change if using non-standard port)
+ufw_ssh_port: 22
+
+# Subnets to allow SSH without rate limiting (e.g., Docker networks, localhost)
+# These rules are inserted before the rate limit rule
+ufw_ssh_whitelist_subnets:
+  - 127.0.0.0/8      # Localhost
+  - 172.16.0.0/12    # Docker default networks (172.16.0.0 - 172.31.255.255)
+
+# Enable UFW logging
+ufw_logging: true

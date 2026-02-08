@@ -1,0 +1,12 @@
+# Managed by Ansible - do not edit manually
+# fail2ban SSH jail configuration
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = {{ fail2ban_maxretry }}
+bantime = {{ fail2ban_bantime }}
+findtime = {{ fail2ban_findtime }}
+ignoreip = {{ fail2ban_ignoreip }}

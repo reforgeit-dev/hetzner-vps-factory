@@ -1,0 +1,50 @@
+---
+# Base playbook - core security hardening only
+# Use this for minimal server setup without Docker/Tailscale/Storage
+#
+# Usage: ansible-playbook -i inventory.ini playbooks/base.yml
+#
+# Roles included:
+#   - common (packages, unattended-upgrades)
+#   - ssh (SSH hardening)
+#   - fail2ban (brute-force protection)
+#   - sysctl (kernel hardening)
+#   - users (power user, apps user)
+#   - ufw (firewall)
+
+- name: Base server configuration
+  hosts: hetzner_vps
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+
+  pre_tasks:
+    - name: Wait for connection
+      wait_for_connection:
+        timeout: 300
+
+  roles:
+    - role: common
+      tags: [common, base]
+    - role: ssh
+      tags: [ssh, security, hardening]
+    - role: fail2ban
+      tags: [fail2ban, security, hardening]
+    - role: sysctl
+      tags: [sysctl, security, hardening]
+    - role: users
+      tags: [users, security]
+    - role: ufw
+      tags: [ufw, firewall, security]
+
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          Base configuration complete.
+
+          Next steps:
+            - Run site.yml for full deployment (Docker, Tailscale, etc.)
+            - Or manually install additional services
+
+          SSH access: ssh {{ power_user_name }}@{{ ansible_host }}

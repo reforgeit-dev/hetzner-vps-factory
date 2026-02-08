@@ -1,0 +1,25 @@
+---
+# Power user configuration (human admin)
+power_user_name: "deploy"
+power_user_shell: "/bin/bash"
+power_user_groups:
+  - sudo
+  - docker
+power_user_ssh_key: "~/.ssh/id_ed25519.pub"
+power_user_passwordless_sudo: true
+
+# Application user configuration (service account)
+apps_user_name: "apps"
+apps_user_shell: "/usr/sbin/nologin"
+apps_user_home: "/opt/apps"
+apps_user_groups:
+  - docker
+
+# Directories owned by apps user
+apps_directories:
+  - /opt/apps
+  - /opt/apps/data
+  - /opt/apps/config
+
+# Security - disable root SSH login (override in profile group_vars if needed)
+disable_root_ssh: true

@@ -1,0 +1,15 @@
+---
+# fail2ban role defaults
+
+# Maximum retries before ban
+fail2ban_maxretry: 3
+
+# Ban duration in seconds (1 hour)
+fail2ban_bantime: 3600
+
+# Time window for counting failures in seconds (10 minutes)
+fail2ban_findtime: 600
+
+# IPs to ignore (never ban)
+# Includes: localhost, IPv6 localhost, Tailscale CGNAT range
+fail2ban_ignoreip: "127.0.0.1/8 ::1 100.64.0.0/10"

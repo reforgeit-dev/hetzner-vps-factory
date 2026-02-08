@@ -1,0 +1,77 @@
+---
+# User management role
+# Creates power user (admin) and application user (service account)
+
+# Power user - for human admin access
+- name: Create power user group
+  group:
+    name: "{{ power_user_name }}"
+    state: present
+
+- name: Create power user
+  user:
+    name: "{{ power_user_name }}"
+    group: "{{ power_user_name }}"
+    groups: "{{ power_user_groups }}"
+    shell: "{{ power_user_shell }}"
+    create_home: yes
+    state: present
+
+- name: Set up SSH authorized keys for power user
+  authorized_key:
+    user: "{{ power_user_name }}"
+    key: "{{ lookup('file', power_user_ssh_key) }}"
+    state: present
+  when: power_user_ssh_key | length > 0
+
+- name: Grant passwordless sudo to power user
+  copy:
+    content: "{{ power_user_name }} ALL=(ALL) NOPASSWD:ALL\n"
+    dest: "/etc/sudoers.d/{{ power_user_name }}"
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  when: power_user_passwordless_sudo
+
+# Application user - for running services
+- name: Create apps user group
+  group:
+    name: "{{ apps_user_name }}"
+    state: present
+
+- name: Create apps user
+  user:
+    name: "{{ apps_user_name }}"
+    group: "{{ apps_user_name }}"
+    groups: "{{ apps_user_groups }}"
+    shell: "{{ apps_user_shell }}"
+    home: "{{ apps_user_home }}"
+    create_home: yes
+    system: yes
+    state: present
+
+- name: Create apps directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ apps_user_name }}"
+    group: "{{ apps_user_name }}"
+    mode: '0755'
+  loop: "{{ apps_directories }}"
+
+# SSH hardening - disable root login after power user is set up
+- name: Disable root SSH login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin no'
+  notify: restart sshd
+  when: disable_root_ssh
+
+# Enable root login when disable_root_ssh is set to false
+- name: Enable root SSH login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin yes'
+  notify: restart sshd
+  when: not disable_root_ssh

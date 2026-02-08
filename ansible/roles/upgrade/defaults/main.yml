@@ -1,0 +1,3 @@
+---
+# Target Ubuntu version
+ubuntu_target_version: "25.10"

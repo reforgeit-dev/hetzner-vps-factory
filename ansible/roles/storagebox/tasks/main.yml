@@ -1,0 +1,115 @@
+---
+# Storage Box mounting via SSHFS
+# NOTE: This role is non-destructive - it only adds/updates storagebox-specific
+# entries and never removes existing SSH keys or known_hosts entries.
+
+- name: Validate required variables
+  assert:
+    that:
+      - storagebox_ssh_private_key | length > 0
+      - storagebox_server | length > 0
+      - storagebox_username | length > 0
+    fail_msg: "Storage Box variables must be provided (use terraform output)"
+
+- name: Install sshfs
+  apt:
+    name: sshfs
+    state: present
+    update_cache: yes
+
+- name: Enable user_allow_other in FUSE config
+  lineinfile:
+    path: /etc/fuse.conf
+    regexp: '^#?user_allow_other'
+    line: 'user_allow_other'
+    state: present
+
+- name: Create .ssh directory (preserves existing)
+  file:
+    path: /root/.ssh
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+
+# Only writes to storagebox-specific key file, never touches other keys
+- name: Deploy Storage Box SSH private key
+  copy:
+    content: "{{ storagebox_ssh_private_key | trim }}\n"
+    dest: "{{ storagebox_ssh_key_path }}"
+    mode: '0600'
+    owner: root
+    group: root
+  no_log: true
+
+# Fetch host key for Storage Box (non-standard port, no hashing for known_hosts module compatibility)
+- name: Get Storage Box host key
+  command: ssh-keyscan -p {{ storagebox_ssh_port }} {{ storagebox_server }}
+  register: storagebox_host_key
+  changed_when: false
+
+# Use known_hosts module - only adds/updates entry for this specific host
+# Does NOT remove any existing entries
+# Filter out comment lines (starting with #) from ssh-keyscan output
+# Format key with [host]:port syntax for non-standard ports
+- name: Add Storage Box to known_hosts (non-destructive)
+  known_hosts:
+    path: /root/.ssh/known_hosts
+    name: "[{{ storagebox_server }}]:{{ storagebox_ssh_port }}"
+    key: "{{ item | regex_replace('^' + storagebox_server, '[' + storagebox_server + ']:' + (storagebox_ssh_port | string)) }}"
+    state: present
+  loop: "{{ storagebox_host_key.stdout_lines | select('match', '^[^#]') | list }}"
+  when: item | length > 0
+
+- name: Check if mount point exists
+  stat:
+    path: "{{ storagebox_mount_point }}"
+  register: mount_point_stat
+
+- name: Create mount point (only if not exists)
+  file:
+    path: "{{ storagebox_mount_point }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  when: not mount_point_stat.stat.exists
+
+# Uses regexp to only update THIS mount entry, preserves all other fstab entries
+# Note: Storage Box uses port 23 for SSH/SFTP
+- name: Add SSHFS mount to fstab (non-destructive)
+  lineinfile:
+    path: /etc/fstab
+    line: "{{ storagebox_username }}@{{ storagebox_server }}:/home {{ storagebox_mount_point }} fuse.sshfs _netdev,port={{ storagebox_ssh_port }},IdentityFile={{ storagebox_ssh_key_path }},allow_other,reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 0 0"
+    state: present
+    regexp: "^.*{{ storagebox_mount_point }}.*fuse.sshfs"
+    backup: yes
+  notify: remount storagebox
+
+- name: Mount Storage Box
+  mount:
+    path: "{{ storagebox_mount_point }}"
+    src: "{{ storagebox_username }}@{{ storagebox_server }}:/home"
+    fstype: fuse.sshfs
+    opts: "_netdev,port={{ storagebox_ssh_port }},IdentityFile={{ storagebox_ssh_key_path }},allow_other,reconnect,ServerAliveInterval=15,ServerAliveCountMax=3"
+    state: mounted
+
+- name: Create directories on Storage Box
+  file:
+    path: "{{ storagebox_mount_point }}/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop: "{{ storagebox_directories }}"
+  when: storagebox_directories | length > 0
+  # SSHFS can return "File exists" even for state=directory, ignore this error
+  register: dir_result
+  failed_when: dir_result.failed and 'File exists' not in dir_result.msg
+
+- name: Verify mount is working
+  command: df -h {{ storagebox_mount_point }}
+  register: mount_check
+  changed_when: false
+
+- name: Display mount status
+  debug:
+    msg: "Storage Box mounted successfully at {{ storagebox_mount_point }}"

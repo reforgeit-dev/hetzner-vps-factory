@@ -1,0 +1,63 @@
+---
+- name: Configure VPS
+  hosts: hetzner_vps
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+
+  pre_tasks:
+    - name: Wait for connection
+      wait_for_connection:
+        timeout: 300
+
+  roles:
+    - role: common
+      tags: [common, base]
+    - role: ssh
+      tags: [ssh, security, hardening]
+    - role: fail2ban
+      tags: [fail2ban, security, hardening]
+    - role: sysctl
+      tags: [sysctl, security, hardening]
+    - role: users
+      tags: [users, security]
+    - role: ufw
+      tags: [ufw, firewall, security]
+    - role: swap
+      tags: [swap]
+      when: install_swap | default(true)
+    - role: docker
+      tags: [docker]
+      when: install_docker | default(true)
+    - role: tailscale
+      tags: [tailscale, vpn]
+      when: install_tailscale | default(true)
+    - role: storagebox
+      tags: [storagebox, storage]
+      when: storagebox_server | default('') | length > 0
+
+  post_tasks:
+    - name: Verify Docker is running
+      command: docker --version
+      changed_when: false
+      tags: [verify]
+      when: install_docker | default(true)
+
+    - name: Verify Tailscale is connected
+      command: tailscale status
+      changed_when: false
+      tags: [verify]
+      when: install_tailscale | default(true)
+
+# Optional: Apply Hetzner firewall to block public SSH (Tailscale-only access)
+# Run with: ansible-playbook playbooks/site.yml -t lockdown
+# Or set enable_hetzner_firewall: true in group_vars
+- name: Apply Hetzner Firewall (lockdown mode)
+  hosts: hetzner_vps
+  gather_facts: false
+  become: false
+
+  roles:
+    - role: hetzner_firewall
+      tags: [lockdown, hetzner_firewall, never]
+      when: enable_hetzner_firewall | default(false)

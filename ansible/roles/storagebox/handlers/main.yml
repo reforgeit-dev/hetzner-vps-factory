@@ -1,0 +1,7 @@
+---
+# Storage Box handlers
+
+- name: remount storagebox
+  mount:
+    path: "{{ storagebox_mount_point }}"
+    state: remounted

@@ -1,0 +1,20 @@
+# Storage Box role defaults
+# Note: Hetzner Storage Box uses port 23 for SSH/SFTP (not 22)
+
+# SSH key for Storage Box access (passed from Terraform output)
+storagebox_ssh_private_key: ""
+
+# Storage Box connection details (passed from Terraform output)
+storagebox_server: ""
+storagebox_username: ""
+
+# SSH port (Hetzner Storage Box uses 23)
+storagebox_ssh_port: 23
+
+# Local mount configuration
+storagebox_mount_point: /mnt/storagebox
+storagebox_ssh_key_path: /root/.ssh/storagebox_key
+
+# Optional: directories to create on Storage Box after mounting
+# Example: ['backups', 'media', 'data']
+storagebox_directories: []

@@ -1,0 +1,32 @@
+# Kernel hardening configuration
+# Managed by Ansible - do not edit manually
+
+# ======================
+# Network Security
+# ======================
+{% for key, value in sysctl_network_hardening.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+
+# ======================
+# Kernel Security
+# ======================
+{% for key, value in sysctl_kernel_hardening.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+
+# ======================
+# Filesystem Security
+# ======================
+{% for key, value in sysctl_fs_hardening.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+
+{% if sysctl_custom %}
+# ======================
+# Custom Settings
+# ======================
+{% for key, value in sysctl_custom.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+{% endif %}

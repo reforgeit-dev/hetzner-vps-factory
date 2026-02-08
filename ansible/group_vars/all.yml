@@ -1,0 +1,9 @@
+---
+# Universal settings for all VPS profiles
+# Profile-specific overrides go in group_vars/<profile>.yml
+
+# Users
+power_user_name: "deploy"
+
+# Hetzner Firewall (lockdown mode)
+enable_hetzner_firewall: false

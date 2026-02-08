@@ -1,0 +1,28 @@
+---
+# Common role defaults
+# Base system configuration: packages and unattended upgrades
+
+# Run full apt dist-upgrade during provisioning
+apt_upgrade_on_provision: true
+
+# System packages to install
+apt_packages:
+  - curl
+  - ufw
+  - unattended-upgrades
+  - tmux
+
+# Unattended upgrades configuration
+unattended_upgrades_enabled: true
+
+# Automatically reboot when required (after kernel updates)
+unattended_upgrades_auto_reboot: true
+
+# Time to reboot (24h format) - 03:00 AM to minimize disruption
+unattended_upgrades_reboot_time: "03:00"
+
+# Remove unused dependencies after upgrades
+unattended_upgrades_autoremove: true
+
+# Interval in days to run apt-get autoclean
+unattended_upgrades_autoclean_interval: 7
