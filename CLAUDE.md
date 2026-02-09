@@ -61,8 +61,11 @@ The script:
 ### Environment Variables
 
 ```bash
-export HCLOUD_TOKEN="your-hetzner-token"
-export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"
+# Required — also available as TF_VAR_ to avoid placing secrets in .tfvars:
+export HCLOUD_TOKEN="your-hetzner-token"              # used by hcloud CLI
+export TF_VAR_hcloud_token="your-hetzner-token"       # used by Terraform provider
+export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"           # used by Ansible
+export TF_VAR_tailscale_auth_key="tskey-auth-xxxxx"   # used by Terraform (if needed)
 ```
 
 ## VPS Profile System
@@ -76,12 +79,11 @@ Variable precedence: role defaults < `group_vars/all.yml` < `group_vars/<profile
 
 Inventory uses child groups: `[immich]` under `[hetzner_vps:children]`. Playbooks target `hetzner_vps` so they work across all profiles.
 
-**Single-profile limitation**: Currently only one VPS profile can be managed at a time. The bottlenecks are:
+**Single-profile limitation**: Only one VPS profile can be managed per deployment. Running `deploy.sh` with a different profile would **destroy the existing VPS** — Terraform's shared state sees different resource attributes and plans replacement. The bottlenecks:
 - `terraform/main.tf` has a single module call with scalar outputs (not a `for_each` map)
 - `terraform/backend.tf` has a hardcoded state key (no workspaces or dynamic keys)
 - `scripts/deploy.sh` and `generate_inventory.sh` overwrite `terraform_output.json` and `inventory.ini` per run (no append/merge)
 - Ansible playbooks and roles ARE multi-host capable but are blocked by the single-host inventory generation
-- To deploy multiple profiles today, run `deploy.sh --profile <name>` separately for each
 
 ## Ansible Workflow
 

@@ -63,13 +63,11 @@ hetzner-vps-factory/
 - SSH key pair (`~/.ssh/id_ed25519`)
 
 ```bash
-export HCLOUD_TOKEN="your-hetzner-api-token"
-export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"
-
-# Any Terraform variable can also be set via environment:
-export TF_VAR_server_name="my-server"
-export TF_VAR_server_type="cx33"
-export TF_VAR_location="hel1"
+# Required — also available as TF_VAR_ to avoid placing in .tfvars:
+export HCLOUD_TOKEN="your-hetzner-api-token"          # used by hcloud CLI
+export TF_VAR_hcloud_token="your-hetzner-api-token"   # used by Terraform provider
+export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"           # used by Ansible
+export TF_VAR_tailscale_auth_key="tskey-auth-xxxxx"   # used by Terraform (if needed)
 ```
 
 ### Terraform State Backend
@@ -105,7 +103,7 @@ Profiles control what gets deployed to each VPS. Each profile has:
 
 Ansible variable precedence: role defaults < `group_vars/all.yml` < `group_vars/<profile>.yml` < `host_vars/`
 
-> **Current limitation — single profile at a time.** While profiles are supported conceptually, the current tooling only manages one VPS per deployment. Terraform has a single module call and scalar outputs, `deploy.sh` and `generate_inventory.sh` overwrite their output files per run, and `backend.tf` uses a single state key. The Ansible playbooks and roles are multi-host capable, but the inventory generation blocks this. To deploy multiple profiles, run `deploy.sh --profile <name>` separately for each. Full multi-VPS orchestration (multiple module instances, map outputs, inventory merging) is not yet implemented.
+> **Current limitation — single profile per deployment.** The tooling manages one VPS at a time. Terraform uses a single module call with a shared backend state — running `deploy.sh` with a different profile would **destroy the existing VPS** and create a new one, since Terraform sees different resource attributes in the same state file. The Ansible playbooks and roles are multi-host capable, but the scripts (`deploy.sh`, `generate_inventory.sh`) and Terraform layer (single module, scalar outputs, one state key) only support one profile. Full multi-VPS orchestration (workspaces or `for_each`, map outputs, inventory merging) is not yet implemented.
 
 ### Adding a New Profile
 
