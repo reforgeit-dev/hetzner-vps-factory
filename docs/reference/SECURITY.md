@@ -56,9 +56,9 @@ Blocks IPs after repeated failed SSH attempts. **Configurable in:** `roles/fail2
 | `maxretry` | 3 | Ban after 3 failed attempts |
 | `bantime` | 3600s (1hr) | Temporary ban, not permanent |
 | `findtime` | 600s (10min) | Window for counting failures |
-| `ignoreip` | `127.0.0.1/8 ::1 100.64.0.0/10` | Whitelist localhost + Tailscale CGNAT |
+| `ignoreip` | `127.0.0.1/8 ::1 100.64.0.0/10 172.16.0.0/12` | Whitelist localhost + Tailscale CGNAT + Docker subnets |
 
-The Tailscale range (100.64.0.0/10) is whitelisted to prevent locking yourself out when testing via VPN.
+The Tailscale range (100.64.0.0/10) is whitelisted to prevent locking yourself out when testing via VPN. The Docker subnet (172.16.0.0/12) prevents Coolify's internal SSH connections from triggering bans.
 
 ---
 

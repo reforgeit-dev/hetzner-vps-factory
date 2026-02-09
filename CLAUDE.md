@@ -167,5 +167,5 @@ terraform state list
 - **Coolify quick install only works on Ubuntu LTS** — the role uses the manual installation method which works on any Ubuntu version
 - **Coolify admin/services configured via UI** — Ansible installs Coolify; admin account, SSL (Traefik DNS challenge), and service deployments (Immich) are done manually through the Coolify web UI
 - **Traefik DNS challenge required for Tailscale-only domains** — HTTP challenge can't reach Tailscale IPs; use Cloudflare DNS challenge with `CF_DNS_API_TOKEN`
-- **Immich storagebox subdirectories must pre-exist** — create `encoded-video`, `library`, `profile`, `thumbs`, `upload`, `backups` under the mount before deploying Immich
+- **Immich storagebox subdirectories are created automatically** — Immich creates `encoded-video`, `library`, `profile`, `thumbs`, `upload`, `backups` and `.immich` markers on first startup when using the storagebox bind mount
 
