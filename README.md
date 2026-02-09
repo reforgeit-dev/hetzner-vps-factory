@@ -106,6 +106,7 @@ hetzner-vps-factory/
 - Ansible >= 2.9
 - jq, hcloud CLI
 - SSH key pair (`~/.ssh/id_ed25519`)
+- A domain with a DNS provider that supports ACME DNS challenge — needed for SSL on Tailscale-only domains (HTTP challenge can't reach Tailscale IPs). Tested with **Cloudflare**. Any provider supported by [LEGO](https://go-acme.github.io/lego/dns/) (100+) should work — avoid GoDaddy (API access restrictions). See [Traefik DNS challenge docs](https://doc.traefik.io/traefik/reference/install-configuration/tls/certificate-resolvers/acme/).
 
 ```bash
 # Required — also available as TF_VAR_ to avoid placing in .tfvars:
