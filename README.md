@@ -105,6 +105,8 @@ Profiles control what gets deployed to each VPS. Each profile has:
 
 Ansible variable precedence: role defaults < `group_vars/all.yml` < `group_vars/<profile>.yml` < `host_vars/`
 
+> **Current limitation — single profile at a time.** While profiles are supported conceptually, the current tooling only manages one VPS per deployment. Terraform has a single module call and scalar outputs, `deploy.sh` and `generate_inventory.sh` overwrite their output files per run, and `backend.tf` uses a single state key. The Ansible playbooks and roles are multi-host capable, but the inventory generation blocks this. To deploy multiple profiles, run `deploy.sh --profile <name>` separately for each. Full multi-VPS orchestration (multiple module instances, map outputs, inventory merging) is not yet implemented.
+
 ### Adding a New Profile
 
 1. Copy `terraform/envs/immich.tfvars.example` to `terraform/envs/<name>.tfvars` and customize

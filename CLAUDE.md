@@ -76,6 +76,13 @@ Variable precedence: role defaults < `group_vars/all.yml` < `group_vars/<profile
 
 Inventory uses child groups: `[immich]` under `[hetzner_vps:children]`. Playbooks target `hetzner_vps` so they work across all profiles.
 
+**Single-profile limitation**: Currently only one VPS profile can be managed at a time. The bottlenecks are:
+- `terraform/main.tf` has a single module call with scalar outputs (not a `for_each` map)
+- `terraform/backend.tf` has a hardcoded state key (no workspaces or dynamic keys)
+- `scripts/deploy.sh` and `generate_inventory.sh` overwrite `terraform_output.json` and `inventory.ini` per run (no append/merge)
+- Ansible playbooks and roles ARE multi-host capable but are blocked by the single-host inventory generation
+- To deploy multiple profiles today, run `deploy.sh --profile <name>` separately for each
+
 ## Ansible Workflow
 
 ### Role Order (site.yml)
