@@ -30,7 +30,29 @@ This repo is the result of actually doing that, multiple times, on real deployme
 - Server is disposable — terraform destroy + deploy.sh = clean slate
 - All configuration is in version-controlled files, not in someone's head or a wiki
 
-**What you'd spend ~10-16 hours doing manually** (server hardening, Docker, Tailscale, Storage Box SSHFS, Coolify install, Traefik SSL, Immich deployment) runs unattended. The ~30 minutes of manual work left (Coolify admin account, SSL config, Immich deploy via UI) is documented step-by-step with screenshots-worth of detail.
+**Time saved:**
+
+| Task | Manual (SSH + docs) | With this repo |
+|------|---------------------|----------------|
+| SSH key-only auth, disable password | 15-30 min | Automated |
+| fail2ban install + configure | 20-30 min | Automated |
+| Kernel hardening (sysctl) | 30-60 min | Automated |
+| UFW firewall + unattended upgrades | 20-30 min | Automated |
+| Non-root user with sudo | 10-15 min | Automated |
+| Swap file setup + tuning | 10-15 min | Automated |
+| Docker + Compose V2 | 15-30 min | Automated |
+| Tailscale install + auth | 10-15 min | Automated |
+| Storage Box SSHFS + fstab + reconnect | 1-2 hours | Automated |
+| Hetzner Cloud firewall (Tailscale-only) | 15-30 min | Automated |
+| Coolify install (dirs, compose, SSH key) | 1-2 hours | Automated |
+| Debugging fail2ban vs Coolify containers | 30-60 min | Solved |
+| Debugging Coolify `getPublicKey()` error | 30-60 min | Solved |
+| Traefik DNS challenge for Tailscale domain | 1-2 hours | Documented (5 min) |
+| Immich deploy with storagebox volume | 30-60 min | Documented (10 min) |
+| Ubuntu version upgrade | 30-60 min | Automated |
+| **Total** | **~10-16 hours** | **~30 min** of manual steps |
+
+The ~30 minutes left (Coolify admin account, SSL config, Immich deploy via UI) is documented step-by-step. Rebuilding from scratch is `./scripts/deploy.sh`.
 
 ## Project Structure
 
