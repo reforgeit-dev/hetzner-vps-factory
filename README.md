@@ -240,4 +240,4 @@ install_coolify: true     # Install Coolify PaaS (requires Docker, root SSH)
 | Storage Box | bx11 (100GB) €3.94 | bx21 (1TB) €13.41 |
 | **Total** | **€8.36** | **€20.78** |
 
-Prices from hel1 datacenter, Feb 2026. cx22 is enough for lightweight services. Immich with machine learning needs cx33 or higher. See [Hetzner Cloud pricing](https://www.hetzner.com/cloud) for current rates.
+Prices from hel1 datacenter, Feb 2026. cx22 is enough for lightweight services. Immich with machine learning needs cx33 or higher. You can start with cx22, install everything, then scale up to cx33 in the Hetzner Console (vertical scaling, brief reboot). See [Hetzner Cloud pricing](https://www.hetzner.com/cloud) for current rates.
