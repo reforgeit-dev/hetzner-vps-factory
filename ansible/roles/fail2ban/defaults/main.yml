@@ -11,5 +11,5 @@ fail2ban_bantime: 3600
 fail2ban_findtime: 600
 
 # IPs to ignore (never ban)
-# Includes: localhost, IPv6 localhost, Tailscale CGNAT range
-fail2ban_ignoreip: "127.0.0.1/8 ::1 100.64.0.0/10"
+# Includes: localhost, IPv6 localhost, Tailscale CGNAT range, Docker bridge networks
+fail2ban_ignoreip: "127.0.0.1/8 ::1 100.64.0.0/10 172.16.0.0/12"

@@ -1,0 +1,11 @@
+---
+# Coolify role defaults
+
+# Coolify CDN base URL
+coolify_cdn_url: "https://cdn.coollabs.io/coolify"
+
+# Coolify data directory
+coolify_data_dir: "/data/coolify"
+
+# Coolify web UI port
+coolify_port: 8000

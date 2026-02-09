@@ -1,5 +1,6 @@
 # Immich (Coolify + photo library) deployment
-# Usage: terraform apply -var-file=envs/immich.tfvars
+# Copy to immich.tfvars and customize:
+#   cp envs/immich.tfvars.example envs/immich.tfvars
 
 server_name        = "my-immich-server"
 server_type        = "cx33"

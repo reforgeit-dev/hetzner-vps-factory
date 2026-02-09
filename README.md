@@ -9,7 +9,7 @@ hetzner-vps-factory/
 ├── terraform/
 │   ├── main.tf                    # SSH key + module call (module.vps)
 │   ├── modules/hetzner-vps/       # Reusable VPS module (server + optional storagebox)
-│   ├── envs/immich.tfvars         # Per-deployment config (checked into git)
+│   ├── envs/immich.tfvars.example  # Profile config template (copy to .tfvars)
 │   ├── backend.tf                 # S3 backend for state storage
 │   ├── provider.tf                # Hetzner Cloud, TLS, Random providers
 │   ├── variables.tf               # Input variables with validation
@@ -37,6 +37,7 @@ hetzner-vps-factory/
 │       ├── docker/                # Docker and Compose V2 (optional)
 │       ├── tailscale/             # Tailscale VPN (optional)
 │       ├── storagebox/            # Hetzner Storage Box SSHFS mounting
+│       ├── coolify/               # Coolify self-hosted PaaS (optional)
 │       ├── upgrade/               # Ubuntu release upgrade
 │       └── hetzner_firewall/      # Cloud firewall lockdown
 │
@@ -106,7 +107,7 @@ Ansible variable precedence: role defaults < `group_vars/all.yml` < `group_vars/
 
 ### Adding a New Profile
 
-1. Create `terraform/envs/<name>.tfvars` with server config
+1. Copy `terraform/envs/immich.tfvars.example` to `terraform/envs/<name>.tfvars` and customize
 2. Create `ansible/group_vars/<name>.yml` with overrides
 3. Deploy: `./scripts/deploy.sh --profile <name>`
 
@@ -131,6 +132,7 @@ Ansible variable precedence: role defaults < `group_vars/all.yml` < `group_vars/
 install_docker: false     # Skip Docker
 install_tailscale: false  # Skip Tailscale
 install_swap: false       # Skip swap
+install_coolify: true     # Install Coolify PaaS (requires Docker, root SSH)
 ```
 
 ## What Gets Deployed
@@ -144,6 +146,7 @@ install_swap: false       # Skip swap
 - Docker + Compose V2 with log rotation
 - Tailscale VPN with auto-authentication
 - Storage Box SSHFS mount with auto-reconnect
+- Coolify self-hosted PaaS (optional, for deploying services like Immich)
 - Optional Hetzner Cloud firewall lockdown (Tailscale-only access)
 
 ## Troubleshooting

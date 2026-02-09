@@ -8,7 +8,8 @@ tailscale_hostname: "my-server"
 # Hetzner Firewall — must match server_name in terraform/envs/immich.tfvars
 hetzner_server_name: "my-immich-server"
 
-# Users - Coolify needs root SSH access to localhost
+# Coolify - self-hosted PaaS (requires root SSH access)
+install_coolify: true
 disable_root_ssh: false
 
 # Storage Box - directories to create after mounting

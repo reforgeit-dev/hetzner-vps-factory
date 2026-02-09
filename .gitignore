@@ -12,8 +12,7 @@ crash.*.log
 # Exclude all .tfvars files (sensitive data)
 *.tfvars
 *.tfvars.json
-!terraform.tfvars.example
-!terraform/envs/*.tfvars
+!*.tfvars.example
 
 # Terraform plan files
 tfplan

@@ -35,6 +35,9 @@
     - role: storagebox
       tags: [storagebox, storage]
       when: storagebox_server | default('') | length > 0
+    - role: coolify
+      tags: [coolify]
+      when: install_coolify | default(false)
 
   post_tasks:
     - name: Verify Docker is running
@@ -48,6 +51,13 @@
       changed_when: false
       tags: [verify]
       when: install_tailscale | default(true)
+
+    - name: Verify Coolify is accessible
+      uri:
+        url: "http://localhost:{{ coolify_port | default(8000) }}"
+        status_code: [200, 302]
+      tags: [verify]
+      when: install_coolify | default(false)
 
 # Optional: Apply Hetzner firewall to block public SSH (Tailscale-only access)
 # Run with: ansible-playbook playbooks/site.yml -t lockdown

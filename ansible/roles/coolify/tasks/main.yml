@@ -1,0 +1,87 @@
+---
+# Coolify manual installation via Ansible
+# Follows: https://coolify.io/docs/get-started/installation#manually
+#
+# After this role runs, access http://<tailscale-hostname>:8000 to create
+# the admin account (cannot be automated).
+
+- name: Verify root SSH access is enabled
+  assert:
+    that:
+      - not (disable_root_ssh | default(true))
+    fail_msg: >
+      Coolify requires root SSH access. Set disable_root_ssh: false
+      in your profile group_vars.
+
+- name: Create Coolify directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: 9999
+    group: root
+    mode: '0700'
+  loop:
+    - "{{ coolify_data_dir }}/source"
+    - "{{ coolify_data_dir }}/ssh/keys"
+    - "{{ coolify_data_dir }}/ssh/mux"
+    - "{{ coolify_data_dir }}/applications"
+    - "{{ coolify_data_dir }}/databases"
+    - "{{ coolify_data_dir }}/backups"
+    - "{{ coolify_data_dir }}/services"
+    - "{{ coolify_data_dir }}/proxy/dynamic"
+    - "{{ coolify_data_dir }}/webhooks-during-maintenance"
+
+# SSH key generation is skipped intentionally.
+# Coolify's setup wizard generates its own key and adds it to
+# root's authorized_keys during the initial browser-based setup.
+
+- name: Download Coolify compose files
+  get_url:
+    url: "{{ coolify_cdn_url }}/{{ item }}"
+    dest: "{{ coolify_data_dir }}/source/{{ item }}"
+    owner: 9999
+    group: root
+    mode: '0600'
+  loop:
+    - docker-compose.yml
+    - docker-compose.prod.yml
+    - upgrade.sh
+
+- name: Check if Coolify .env exists
+  stat:
+    path: "{{ coolify_data_dir }}/source/.env"
+  register: coolify_env_stat
+
+- name: Generate Coolify environment file
+  template:
+    src: coolify.env.j2
+    dest: "{{ coolify_data_dir }}/source/.env"
+    owner: 9999
+    group: root
+    mode: '0600'
+  when: not coolify_env_stat.stat.exists
+
+- name: Create Coolify Docker network
+  command: docker network create --attachable coolify
+  register: coolify_network
+  changed_when: coolify_network.rc == 0
+  failed_when: coolify_network.rc != 0 and 'already exists' not in coolify_network.stderr
+
+- name: Start Coolify
+  command: >
+    docker compose
+    --env-file {{ coolify_data_dir }}/source/.env
+    -f {{ coolify_data_dir }}/source/docker-compose.yml
+    -f {{ coolify_data_dir }}/source/docker-compose.prod.yml
+    up -d --pull always --remove-orphans
+  register: coolify_compose
+  changed_when: "'Created' in coolify_compose.stderr"
+
+- name: Wait for Coolify to be healthy
+  uri:
+    url: "http://localhost:{{ coolify_port }}"
+    status_code: [200, 302]
+  register: coolify_health
+  until: coolify_health.status is defined and coolify_health.status in [200, 302]
+  retries: 30
+  delay: 5

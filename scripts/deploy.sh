@@ -214,13 +214,25 @@ else
     log_success "Configuration valid"
 
     # Step 3: Terraform plan
-    log "Planning infrastructure changes..."
+    TFVARS_FILE="envs/${PROFILE}.tfvars"
+    if [ ! -f "$TFVARS_FILE" ]; then
+        if [ -f "${TFVARS_FILE}.example" ]; then
+            log_error "Terraform vars file not found: $TFVARS_FILE"
+            log_error "Copy the example and customize:"
+            log_error "  cp ${TFVARS_FILE}.example ${TFVARS_FILE}"
+        else
+            log_error "Terraform vars file not found: $TFVARS_FILE"
+            log_error "Create it with your deployment config (see terraform/envs/*.tfvars.example)"
+        fi
+        exit 1
+    fi
+    log "Planning infrastructure changes (profile: $PROFILE)..."
 
     PLAN_EXIT_CODE=0
     if [ "$QUIET_MODE" = true ]; then
-        terraform plan -out=tfplan -detailed-exitcode -input=false >> "$LOG_FILE" 2>&1 || PLAN_EXIT_CODE=$?
+        terraform plan -out=tfplan -detailed-exitcode -input=false -var-file="$TFVARS_FILE" >> "$LOG_FILE" 2>&1 || PLAN_EXIT_CODE=$?
     else
-        terraform plan -out=tfplan -detailed-exitcode -input=false || PLAN_EXIT_CODE=$?
+        terraform plan -out=tfplan -detailed-exitcode -input=false -var-file="$TFVARS_FILE" || PLAN_EXIT_CODE=$?
     fi
 
     if [ "$PLAN_EXIT_CODE" -eq 1 ]; then

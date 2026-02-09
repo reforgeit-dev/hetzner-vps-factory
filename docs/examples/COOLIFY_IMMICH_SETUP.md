@@ -2,7 +2,7 @@
 
 > **Example from a real deployment.** Replace all placeholder values with your own configuration.
 
-Manual setup guide for the immich VPS profile. Coolify and Immich are installed manually (not via Ansible).
+Manual setup guide for the immich VPS profile. Coolify is installed via Ansible (`install_coolify: true`), but the admin account, SSL configuration, and Immich deployment are done manually through the Coolify UI.
 
 ## Current State
 
@@ -66,7 +66,7 @@ Coolify platform:
 ├── ssh/                            # Coolify SSH keys + mux sockets
 ├── applications/                   # Empty (no app deployments)
 ├── databases/                      # Empty (no standalone DBs)
-└── source/                         # Empty
+└── source/                         # Coolify compose + .env
 ```
 
 ## Docker Volumes
@@ -91,13 +91,24 @@ The Immich compose bind-mounts `/mnt/storagebox/immich/uploads:/usr/src/app/uplo
 
 ```
 /mnt/storagebox/immich/uploads/
-├── backups/          # Immich's auto pg_dump (.sql.gz, daily)
-├── encoded-video/    # Transcoded video
-├── library/          # External library imports
-├── profile/          # User profile photos
-├── thumbs/           # Preview + thumbnail images
-└── upload/           # Original uploaded files
+├── .immich               # Mount integrity marker (created by Immich)
+├── backups/              # Immich's auto pg_dump (.sql.gz, daily)
+├── encoded-video/        # Transcoded video
+├── library/              # External library imports
+├── profile/              # User profile photos
+├── thumbs/               # Preview + thumbnail images
+└── upload/               # Original uploaded files
 ```
+
+### Storagebox preparation
+
+Before deploying Immich with storagebox storage, create the required subdirectories:
+
+```bash
+sudo mkdir -p /mnt/storagebox/immich/uploads/{encoded-video,library,profile,thumbs,upload,backups}
+```
+
+Immich creates `.immich` marker files in each subdirectory on first startup for mount integrity verification.
 
 ## Docker Networks
 
@@ -141,54 +152,85 @@ Since the domain points to a Tailscale IP, HTTP challenge won't work. DNS challe
 
 ---
 
-## Installation Steps (for reference)
+## Installation Steps
 
-### 1. Install Coolify
+### Prerequisites (Ansible)
+
+The following must be completed via Ansible before starting:
+
+1. **Docker** installed (`install_docker: true`)
+2. **Tailscale** connected (`install_tailscale: true`)
+3. **Storage Box** mounted with `allow_other` (`storagebox_directories: [immich]`)
+4. **Coolify** installed (`install_coolify: true`)
+5. **Root SSH enabled** (`disable_root_ssh: false`) — Coolify SSHs to localhost from inside Docker
+6. **fail2ban** must whitelist Docker subnets (`172.16.0.0/12` in `ignoreip`) — otherwise Coolify's SSH attempts during setup trigger a ban
+7. **DNS** configured: `immich.example.com` → A record → `<tailscale-ip>` (Cloudflare)
+
+### 1. Create Coolify Admin Account
+
+Access `http://<tailscale-hostname>:8000` and create the admin account.
+
+### 2. Complete Server Setup Wizard
+
+1. Choose **"Deploy on this server"** (localhost)
+2. Coolify generates its own SSH key and verifies connectivity
+3. If SSH validation fails with "Server is not reachable", check that fail2ban hasn't banned the Coolify container IP (see Troubleshooting)
+
+### 3. Configure SSL (Cloudflare DNS Challenge)
+
+Traefik defaults to HTTP challenge, which won't work with Tailscale IPs. Switch to DNS challenge:
+
+1. In Coolify, go to **Servers** → your server → **Proxy** tab → **Dynamic Configuration** (or edit the Traefik docker-compose)
+2. Add to `environment` section:
+   ```yaml
+   - CF_DNS_API_TOKEN=<your-cloudflare-api-token>
+   ```
+3. In `command` section, replace:
+   ```yaml
+   - '--certificatesresolvers.letsencrypt.acme.httpchallenge=true'
+   - '--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=http'
+   ```
+   with:
+   ```yaml
+   - '--certificatesResolvers.letsencrypt.acme.dnsChallenge=true'
+   - '--certificatesResolvers.letsencrypt.acme.dnsChallenge.provider=cloudflare'
+   ```
+4. Save — Coolify restarts Traefik automatically
+
+The Cloudflare API token needs **Zone:DNS:Edit** permission for the domain.
+
+### 4. Prepare Storage Box Directories
 
 ```bash
-ssh <user>@<tailscale-hostname>
-curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash
+sudo mkdir -p /mnt/storagebox/immich/uploads/{encoded-video,library,profile,thumbs,upload,backups}
 ```
 
-Then access `http://<tailscale-hostname>:8000` and create admin account.
+### 5. Deploy Immich
 
-### 2. Configure SSL (Cloudflare DNS challenge)
+1. Coolify dashboard → **Projects** → **Add** → **Add Resources** → **Services** → search **Immich**
+2. Set the Immich service URL to `https://immich.example.com` (no port — Traefik handles routing to internal port 2283)
+3. In the Immich service storage/volumes, change the uploads volume from Docker volume to bind mount:
+   - **Host path**: `/mnt/storagebox/immich/uploads`
+   - **Container path**: `/usr/src/app/upload`
+4. Click **Deploy**
+5. Wait for all 4 containers to show **Running (healthy)** — first deploy downloads ~2GB of images
 
-In Coolify Settings:
-- Set Traefik proxy as the default
-- Add Cloudflare DNS API token for Let's Encrypt DNS challenge
-
-### 3. Deploy Immich
-
-1. Coolify dashboard → **Services** → **Add Service** → Search **Immich**
-2. Set domain: `immich.example.com`
-3. Enable SSL (Let's Encrypt)
-4. Deploy
-
-### 4. Configure DNS
-
-In Cloudflare: `immich.example.com` → A record → `<tailscale-ip>`
-
----
-
-## Verification
+### 6. Verify
 
 ```bash
 # All containers healthy
 ssh <user>@<tailscale-hostname> "sudo docker ps --format 'table {{.Names}}\t{{.Status}}' | grep -E '(coolify|immich|redis|database)'"
 
-# Immich responding
+# SSL working
 curl -I https://immich.example.com  # from Tailscale device
 
-# Coolify dashboard
-curl -I http://<tailscale-hostname>:8000
-
-# Traefik logs
-ssh <user>@<tailscale-hostname> "sudo docker logs coolify-proxy --tail 20"
-
-# Immich server logs
-ssh <user>@<tailscale-hostname> "sudo docker logs immich-<service-id> --tail 20"
+# Storage Box mounted correctly
+ssh <user>@<tailscale-hostname> "sudo docker inspect immich-<service-id> --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'"
 ```
+
+Access `https://immich.example.com` and create your Immich user account.
+
+---
 
 ## Maintenance
 
@@ -215,6 +257,22 @@ Coolify auto-backs up its own Postgres database daily to `/data/coolify/backups/
 
 ## Troubleshooting
 
+### Coolify Setup: "Server is not reachable"
+
+Coolify SSHs to the host from inside a Docker container. If fail2ban bans the container IP:
+
+```bash
+# Check if container IP is banned
+sudo fail2ban-client status sshd
+
+# Unban (container IP varies, check with docker inspect)
+sudo fail2ban-client set sshd unbanip <container-ip>
+
+# Permanent fix: add Docker subnets to fail2ban ignoreip
+# In /etc/fail2ban/jail.local, add 172.16.0.0/12 to ignoreip
+# Or set in Ansible: fail2ban_ignoreip includes 172.16.0.0/12
+```
+
 ### Coolify Not Accessible
 
 ```bash
@@ -222,17 +280,26 @@ ssh <user>@<tailscale-hostname> "sudo docker ps | grep coolify"
 ssh <user>@<tailscale-hostname> "sudo docker logs coolify --tail 100"
 ```
 
-### Immich Not Loading
+### Immich Not Loading / Crash Loop
+
+If Immich fails with mount integrity errors (`Failed to read .immich`):
 
 ```bash
-ssh <user>@<tailscale-hostname> "sudo docker ps | grep -E 'immich|database|redis'"
-ssh <user>@<tailscale-hostname> "sudo docker logs immich-<service-id> --tail 100"
+# Ensure storagebox subdirectories exist
+sudo mkdir -p /mnt/storagebox/immich/uploads/{encoded-video,library,profile,thumbs,upload,backups}
+
+# Restart Immich
+sudo docker restart immich-<service-id>
 ```
 
 ### SSL Certificate Issues
 
 ```bash
+# Check Traefik ACME logs
 ssh <user>@<tailscale-hostname> "sudo docker logs coolify-proxy --tail 100 2>&1 | grep -i acme"
+
+# Verify DNS challenge is configured (not HTTP challenge)
+ssh <user>@<tailscale-hostname> "sudo docker inspect coolify-proxy --format '{{.Args}}'" | tr ',' '\n' | grep -i challenge
 ```
 
 ### Restart Everything

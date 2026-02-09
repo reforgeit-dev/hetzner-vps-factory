@@ -11,7 +11,7 @@ Guidance for Claude Code when working with this repository.
 **Terraform** (`terraform/`):
 - `main.tf` - SSH key (shared) + `module "vps"` call
 - `modules/hetzner-vps/` - Reusable module: server + optional storagebox (`count`-gated)
-- `envs/immich.tfvars` - Per-deployment config (checked into git)
+- `envs/immich.tfvars.example` - Profile config template (copy to `.tfvars` and customize)
 - `provider.tf` - Hetzner Cloud, TLS, Random providers
 - `backend.tf` - S3 backend state storage
 - `variables.tf` - Input variables with validation
@@ -26,7 +26,7 @@ Guidance for Claude Code when working with this repository.
 - `playbooks/site.yml` - Main orchestrator playbook
 - `playbooks/base.yml` - Core security hardening only (no Docker/Tailscale)
 - `playbooks/upgrade.yml` - Ubuntu version upgrade
-- Roles: common, ssh, fail2ban, sysctl, users, ufw, swap, docker, tailscale, storagebox, upgrade, hetzner_firewall
+- Roles: common, ssh, fail2ban, sysctl, users, ufw, swap, docker, tailscale, storagebox, coolify, upgrade, hetzner_firewall
 
 **Scripts** (`scripts/`):
 - `deploy.sh` - Automated deployment with `--profile` flag
@@ -80,9 +80,9 @@ Inventory uses child groups: `[immich]` under `[hetzner_vps:children]`. Playbook
 
 ### Role Order (site.yml)
 
-common -> ssh -> fail2ban -> sysctl -> users -> ufw -> swap -> docker -> tailscale -> storagebox
+common -> ssh -> fail2ban -> sysctl -> users -> ufw -> swap -> docker -> tailscale -> storagebox -> coolify
 
-Optional roles gated by variables: `install_docker`, `install_tailscale`, `install_swap` (all default true).
+Optional roles gated by variables: `install_docker`, `install_tailscale`, `install_swap` (all default true), `install_coolify` (default false).
 
 ### Role Defaults
 
@@ -100,6 +100,7 @@ Each role has `defaults/main.yml`. Key variables:
 | tailscale | `tailscale_hostname`, `tailscale_extra_args` |
 | ufw | `ufw_allow_rules`, `ufw_rate_limit_ssh`, `ufw_default_incoming` |
 | storagebox | `storagebox_mount_point`, `storagebox_ssh_port`, `storagebox_directories` |
+| coolify | `coolify_port`, `coolify_data_dir`, `coolify_cdn_url` |
 
 ### Common Commands
 
@@ -152,4 +153,10 @@ terraform state list
 - **Storage Box uses port 23** — not 22; the storagebox role handles this
 - **Ansible performance** — pipelining and fact caching enabled for 2-5x faster execution
 - **All operations are idempotent** — safe to re-run
+- **Coolify requires `disable_root_ssh: false`** — it SSHs to localhost from inside Docker containers
+- **Coolify + fail2ban interaction** — fail2ban must whitelist Docker subnets (`172.16.0.0/12` in `ignoreip`), otherwise Coolify's SSH from containers triggers a ban
+- **Coolify quick install only works on Ubuntu LTS** — the role uses the manual installation method which works on any Ubuntu version
+- **Coolify admin/services configured via UI** — Ansible installs Coolify; admin account, SSL (Traefik DNS challenge), and service deployments (Immich) are done manually through the Coolify web UI
+- **Traefik DNS challenge required for Tailscale-only domains** — HTTP challenge can't reach Tailscale IPs; use Cloudflare DNS challenge with `CF_DNS_API_TOKEN`
+- **Immich storagebox subdirectories must pre-exist** — create `encoded-video`, `library`, `profile`, `thumbs`, `upload`, `backups` under the mount before deploying Immich
 
