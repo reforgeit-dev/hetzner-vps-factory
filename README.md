@@ -105,11 +105,28 @@ Ansible variable precedence: role defaults < `group_vars/all.yml` < `group_vars/
 
 > **Current limitation — single profile per deployment.** The tooling manages one VPS at a time. Terraform uses a single module call with a shared backend state — running `deploy.sh` with a different profile would **destroy the existing VPS** and create a new one, since Terraform sees different resource attributes in the same state file. The Ansible playbooks and roles are multi-host capable, but the scripts (`deploy.sh`, `generate_inventory.sh`) and Terraform layer (single module, scalar outputs, one state key) only support one profile. Full multi-VPS orchestration (workspaces or `for_each`, map outputs, inventory merging) is not yet implemented.
 
+### Ansible Configuration
+
+`group_vars/all.yml` contains universal defaults shared by all profiles (e.g., `power_user_name`). Profile-specific overrides go in `group_vars/<profile>.yml`.
+
+Key variables to set per profile:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `tailscale_hostname` | Yes | Tailscale MagicDNS hostname for the VPS |
+| `hetzner_server_name` | Yes | Must match `server_name` in the profile's `.tfvars` |
+| `install_coolify` | No | Enable Coolify PaaS (also requires `disable_root_ssh: false`) |
+| `disable_root_ssh` | No | Must be `false` if using Coolify |
+| `storagebox_directories` | No | Directories to create on the Storage Box mount |
+
+See `group_vars/immich.yml` for a complete example.
+
 ### Adding a New Profile
 
 1. Copy `terraform/envs/immich.tfvars.example` to `terraform/envs/<name>.tfvars` and customize
-2. Create `ansible/group_vars/<name>.yml` with overrides
-3. Deploy: `./scripts/deploy.sh --profile <name>`
+2. Create `ansible/group_vars/<name>.yml` with profile overrides (see table above)
+3. Update `terraform/backend.tf` — change the state `key` to avoid overwriting an existing profile's state
+4. Deploy: `./scripts/deploy.sh --profile <name>`
 
 ## Configuration
 
