@@ -100,15 +100,9 @@ The Immich compose bind-mounts `/mnt/storagebox/immich/uploads:/usr/src/app/uplo
 └── upload/               # Original uploaded files
 ```
 
-### Storagebox preparation
+### Storagebox directory structure
 
-Before deploying Immich with storagebox storage, create the required subdirectories:
-
-```bash
-sudo mkdir -p /mnt/storagebox/immich/uploads/{encoded-video,library,profile,thumbs,upload,backups}
-```
-
-Immich creates `.immich` marker files in each subdirectory on first startup for mount integrity verification.
+Immich creates subdirectories and `.immich` marker files on first startup. Rather than creating them manually, deploy Immich first with the default Docker volume, then rsync the complete structure to the storagebox (see Installation Step 5).
 
 ## Docker Networks
 
@@ -199,25 +193,33 @@ Traefik defaults to HTTP challenge, which won't work with Tailscale IPs. Switch 
 
 The Cloudflare API token needs **Zone:DNS:Edit** permission for the domain.
 
-### 4. Prepare Storage Box Directories
-
-```bash
-sudo mkdir -p /mnt/storagebox/immich/uploads/{encoded-video,library,profile,thumbs,upload,backups}
-```
-
-### 5. Deploy Immich
+### 4. Deploy Immich
 
 1. Coolify dashboard → **Projects** → **Add** → **Add Resources** → **Services** → search **Immich**
 2. Set the Immich service URL to `https://immich.example.com:2283` — both `https://` and the internal port `:2283` are required in the Coolify service URL field
-3. Change the uploads volume from Docker volume to storagebox bind mount:
-   - In the Coolify UI, go to your Immich service → **Docker Compose** editor
-   - In the `immich` service `volumes`, replace the named volume with a bind mount:
-     ```yaml
-     - /mnt/storagebox/immich/uploads:/usr/src/app/upload
-     ```
-   - **Important**: Always edit volumes through Coolify's compose editor, not directly on the server — Coolify regenerates the on-disk compose file on every restart/redeploy
-4. Click **Deploy**
-5. Wait for all 4 containers to show **Running (healthy)** — first deploy downloads ~2GB of images
+3. Click **Deploy** — leave the default Docker volume for now; we'll migrate to storagebox after first startup
+4. Wait for all 4 containers to show **Running (healthy)** — first deploy downloads ~2GB of images
+
+### 5. Migrate Uploads to Storage Box
+
+After Immich starts, it creates the full directory structure (subdirectories + `.immich` markers) in the Docker volume. Rsync this to the storagebox, then switch the volume:
+
+1. Stop Immich via the Coolify UI (service → **Stop**)
+2. Rsync from Docker volume to storagebox:
+   ```bash
+   # Find the Docker volume mount point
+   sudo docker volume inspect <service-id>_immich-uploads --format '{{.Mountpoint}}'
+
+   # Rsync (--no-owner --no-group because SSHFS doesn't support chown)
+   sudo rsync -av --no-owner --no-group /var/lib/docker/volumes/<service-id>_immich-uploads/_data/ /mnt/storagebox/immich/uploads/
+   ```
+3. In the Coolify UI, go to your Immich service → **Docker Compose** editor
+4. In the `immich` service `volumes`, replace the named volume with a bind mount:
+   ```yaml
+   - /mnt/storagebox/immich/uploads:/usr/src/app/upload
+   ```
+   **Important**: Always edit volumes through Coolify's compose editor, not directly on the server — Coolify regenerates the on-disk compose file on every restart/redeploy
+5. Redeploy from the Coolify UI
 
 ### 6. Verify
 
@@ -252,22 +254,6 @@ In Coolify dashboard → Immich service → **Redeploy** to pull latest `release
 # Dump Immich database
 ssh <user>@<tailscale-hostname> "sudo docker exec database-<service-id> pg_dump -U \$(sudo docker exec database-<service-id> printenv POSTGRES_USER) immich" > immich_backup_$(date +%Y%m%d).sql
 ```
-
-### Migrate Immich Data to Storage Box
-
-If Immich was initially deployed with a Docker volume and you need to move data to the storagebox:
-
-1. Stop Immich via the Coolify UI (service → **Stop**)
-2. Rsync data from the Docker volume to storagebox:
-   ```bash
-   # Find the Docker volume mount point
-   sudo docker volume inspect <service-id>_immich-uploads --format '{{.Mountpoint}}'
-
-   # Rsync (--no-owner --no-group because SSHFS doesn't support chown)
-   sudo rsync -av --no-owner --no-group /var/lib/docker/volumes/<service-id>_immich-uploads/_data/ /mnt/storagebox/immich/uploads/
-   ```
-3. Update the volume in Coolify's **Docker Compose** editor (see Step 5.3 above)
-4. Redeploy from the Coolify UI
 
 ### Coolify's Own Backups
 
