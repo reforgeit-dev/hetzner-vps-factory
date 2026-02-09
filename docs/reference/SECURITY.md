@@ -276,6 +276,7 @@ The roles above cover common attack surface. Further hardening depends on your t
 | **Docker socket** | Mounted into Coolify containers (required for container management) | Run rootless Docker or use a socket proxy to limit API surface |
 | **Coolify UI** | HTTP on port 8000, no 2FA | Put behind Tailscale-only access (already the case with firewall lockdown); Coolify supports HTTPS and may add 2FA in future |
 | **API tokens on disk** | Cloudflare DNS token stored in Coolify `.env` | Use scoped API tokens with minimal permissions; rotate periodically |
+| **fail2ban scope** | SSH only | Extend to HTTP/HTTPS traffic for Coolify and Traefik — see [guide](https://www.mustafaramx.com/post/how-to-secure-coolify-server-with-fail2ban) |
 | **Intrusion detection** | None beyond fail2ban | Add AIDE/OSSEC for file integrity monitoring, or ship logs to an external SIEM |
 | **Backups** | Hetzner daily backups (unencrypted, provider-accessible) | Add encrypted offsite backups (e.g., S3 Glacier with client-side encryption) |
 | **Container images** | Floating tags (`:latest`, `:release`) | Pin image digests or use Dependabot/Renovate for controlled updates |
