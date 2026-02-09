@@ -77,11 +77,12 @@ S3 backend (`terraform/backend.tf`) is optional but recommended for shared/persi
 ## Quick Start
 
 ```bash
-# Deploy (immich profile by default)
-./scripts/deploy.sh
+# 1. Copy and customize the profile tfvars
+cp terraform/envs/immich.tfvars.example terraform/envs/immich.tfvars
+# Edit terraform/envs/immich.tfvars with your server_name, server_type, etc.
 
-# Or with explicit profile
-./scripts/deploy.sh --profile immich
+# 2. Deploy (immich profile by default)
+./scripts/deploy.sh
 ```
 
 ### Deploy Options
