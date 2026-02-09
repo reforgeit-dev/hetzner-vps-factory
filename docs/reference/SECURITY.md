@@ -265,6 +265,25 @@ Each layer compensates for potential failures in others.
 
 ---
 
+## Further Hardening
+
+The roles above provide a solid baseline. Below are example directions for making the setup even more secure, depending on your threat model.
+
+| Area | Current State | Potential Improvement |
+|------|--------------|----------------------|
+| **Tailscale account** | Single perimeter — if compromised, attacker reaches all services | Enable Tailscale ACLs to restrict which devices can reach which ports; enable 2FA on the Tailscale account |
+| **Root SSH** | Enabled when using Coolify (it SSHs to localhost from Docker) | Restrict root SSH to localhost only (`AllowUsers root@127.0.0.1 root@172.16.0.0/12`) |
+| **Docker socket** | Mounted into Coolify containers (required for container management) | Run rootless Docker or use a socket proxy to limit API surface |
+| **Coolify UI** | HTTP on port 8000, no 2FA | Put behind Tailscale-only access (already the case with firewall lockdown); Coolify supports HTTPS and may add 2FA in future |
+| **API tokens on disk** | Cloudflare DNS token stored in Coolify `.env` | Use scoped API tokens with minimal permissions; rotate periodically |
+| **Intrusion detection** | None beyond fail2ban | Add AIDE/OSSEC for file integrity monitoring, or ship logs to an external SIEM |
+| **Backups** | Hetzner daily backups (unencrypted, provider-accessible) | Add encrypted offsite backups (e.g., S3 Glacier with client-side encryption) |
+| **Container images** | Floating tags (`:latest`, `:release`) | Pin image digests or use Dependabot/Renovate for controlled updates |
+
+None of these are required for a typical homelab setup, but they're worth considering if you're exposing services to the internet or storing sensitive data.
+
+---
+
 ## Quick Reference
 
 ### Apply All Security Roles
