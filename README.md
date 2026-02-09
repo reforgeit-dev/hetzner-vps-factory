@@ -1,6 +1,6 @@
 # Hetzner VPS Factory
 
-Terraform + Ansible toolkit for provisioning Hetzner Cloud VPS instances. This is a **VPS factory** — reusable infrastructure that can deploy different configurations (Coolify + Immich, dev boxes, etc.) using profiles.
+Terraform + Ansible toolkit for provisioning Hetzner Cloud VPS instances. Designed for **homelab use** — personal servers, self-hosted services, side projects. Not production-hardened (yet), but solid enough to run real workloads without worrying about the basics.
 
 ## Why This Exists
 
@@ -92,11 +92,8 @@ hetzner-vps-factory/
 └── docs/
     ├── reference/                 # How things work today
     │   └── SECURITY.md            # Security hardening reference
-    ├── examples/                  # Real deployment examples
-    │   └── COOLIFY_IMMICH_SETUP.md
-    └── planning/                  # Future work
-        ├── IMPROVEMENT_IDEAS.md   # Tracked improvement ideas
-        └── BACKUP_GLACIER_PLAN.md # S3 Glacier backup strategy
+    └── examples/                  # Real deployment examples
+        └── COOLIFY_IMMICH_SETUP.md
 ```
 
 ## Prerequisites
@@ -228,8 +225,6 @@ install_coolify: true     # Install Coolify PaaS (requires Docker, root SSH)
 | `CLAUDE.md` | Development guidance and common commands |
 | `docs/reference/SECURITY.md` | Security hardening reference |
 | `docs/examples/COOLIFY_IMMICH_SETUP.md` | Coolify + Immich setup example |
-| `docs/planning/IMPROVEMENT_IDEAS.md` | Tracked improvement ideas |
-| `docs/planning/BACKUP_GLACIER_PLAN.md` | S3 Glacier backup strategy |
 
 ## Cost (per VPS)
 

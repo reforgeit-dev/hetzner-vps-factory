@@ -35,8 +35,6 @@ Guidance for Claude Code when working with this repository.
 **Documentation** (`docs/`):
 - `reference/SECURITY.md` - Security hardening reference
 - `examples/COOLIFY_IMMICH_SETUP.md` - Coolify and Immich setup example
-- `planning/IMPROVEMENT_IDEAS.md` - Tracked improvement ideas
-- `planning/BACKUP_GLACIER_PLAN.md` - S3 Glacier backup strategy
 
 ## Deployment
 
