@@ -2,6 +2,36 @@
 
 Terraform + Ansible toolkit for provisioning Hetzner Cloud VPS instances. This is a **VPS factory** — reusable infrastructure that can deploy different configurations (Coolify + Immich, dev boxes, etc.) using profiles.
 
+## Why This Exists
+
+You can SSH into a VPS and set everything up by hand. You can ask an LLM to walk you through it. You'll get a working server — until you hit the first weird failure at 2am and spend an hour debugging.
+
+This repo is the result of actually doing that, multiple times, on real deployments. The value isn't the automation itself — it's the problems already solved:
+
+**Security that's easy to skip manually:**
+- SSH key-only auth with fail2ban (3 strikes, 1hr ban) — not just installed but tuned
+- Kernel hardening via sysctl (ASLR, SYN flood protection, ICMP redirects disabled)
+- UFW firewall with rate-limited SSH + Tailscale-only access
+- Unattended security upgrades with auto-reboot
+- Hetzner Cloud firewall lockdown that blocks all public access except Tailscale UDP
+
+**Gotchas that cost hours to debug once:**
+- Coolify's onboarding wizard crashes with `getPublicKey() on null` if the SSH key isn't pre-generated — the wizard expects it to exist, it doesn't create it
+- fail2ban bans Coolify's own Docker containers (172.16.0.0/12 must be whitelisted) — manifests as "Server is not reachable" during setup with no useful error
+- Traefik `docker compose restart` does NOT pick up config changes (command args) — must recreate the container. Coolify UI handles this, direct CLI doesn't
+- Tailscale-only domains can't use HTTP challenge for SSL — needs Cloudflare DNS challenge, which isn't the default
+- Storage Box SSHFS needs `allow_other` mount option for Docker containers to access the mount
+- Coolify regenerates on-disk compose files on every restart — direct server edits get silently overwritten
+- Ubuntu `do-release-upgrade` changes the SSH host key — reconnections fail until known_hosts is updated
+
+**Reproducibility:**
+- `./scripts/deploy.sh` rebuilds the entire stack from scratch in ~15 minutes
+- Every role is idempotent — safe to re-run after failures or changes
+- Server is disposable — terraform destroy + deploy.sh = clean slate
+- All configuration is in version-controlled files, not in someone's head or a wiki
+
+**What you'd spend ~10-16 hours doing manually** (server hardening, Docker, Tailscale, Storage Box SSHFS, Coolify install, Traefik SSL, Immich deployment) runs unattended. The ~30 minutes of manual work left (Coolify admin account, SSL config, Immich deploy via UI) is documented step-by-step with screenshots-worth of detail.
+
 ## Project Structure
 
 ```
