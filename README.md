@@ -235,9 +235,9 @@ install_coolify: true     # Install Coolify PaaS (requires Docker, root SSH)
 
 | Resource | Smaller setup | Immich setup |
 |----------|--------------|--------------|
-| VPS | cx22 (2 vCPU, 4GB) ~€3.79 | cx33 (4 vCPU, 8GB) ~€5.49 |
-| Backups (+20%) | ~€0.76 | ~€1.10 |
-| Storage Box | bx11 (100GB) ~€3.81 | bx11 (100GB) ~€3.81 |
-| **Total** | **~€8.36** | **~€10.40** |
+| VPS | cx22 (2 vCPU, 4GB) €3.68 | cx33 (4 vCPU, 8GB) €6.14 |
+| Backups (+20%) | €0.74 | €1.23 |
+| Storage Box | bx11 (100GB) €3.94 | bx21 (1TB) €13.41 |
+| **Total** | **€8.36** | **€20.78** |
 
-cx22 is fine for lightweight services. Immich with machine learning needs cx33 or higher. See [Hetzner Cloud pricing](https://www.hetzner.com/cloud) for current rates.
+Prices from hel1 datacenter, Feb 2026. cx22 is enough for lightweight services. Immich with machine learning needs cx33 or higher. See [Hetzner Cloud pricing](https://www.hetzner.com/cloud) for current rates.
