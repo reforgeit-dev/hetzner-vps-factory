@@ -15,14 +15,10 @@ This repo is the result of actually doing that, multiple times, on real deployme
 - Unattended security upgrades with auto-reboot
 - Hetzner Cloud firewall lockdown that blocks all public access except Tailscale UDP
 
-**Gotchas that cost hours to debug once:**
-- Coolify's onboarding wizard crashes with `getPublicKey() on null` if the SSH key isn't pre-generated — the wizard expects it to exist, it doesn't create it
-- fail2ban bans Coolify's own Docker containers (172.16.0.0/12 must be whitelisted) — manifests as "Server is not reachable" during setup with no useful error
-- Traefik `docker compose restart` does NOT pick up config changes (command args) — must recreate the container. Coolify UI handles this, direct CLI doesn't
-- Tailscale-only domains can't use HTTP challenge for SSL — needs Cloudflare DNS challenge, which isn't the default
-- Storage Box SSHFS needs `allow_other` mount option for Docker containers to access the mount
-- Coolify regenerates on-disk compose files on every restart — direct server edits get silently overwritten
-- Ubuntu `do-release-upgrade` changes the SSH host key — reconnections fail until known_hosts is updated
+**Gotchas already handled:**
+- fail2ban bans Coolify's own Docker containers (172.16.0.0/12 must be whitelisted) — manifests as "Server is not reachable" with no useful error
+- Tailscale-only domains can't use Let's Encrypt HTTP challenge — needs Cloudflare DNS challenge, which isn't the default
+- Several other Coolify, SSHFS, and Docker Compose quirks documented in the setup guide
 
 **Reproducibility:**
 - `./scripts/deploy.sh` rebuilds the entire stack from scratch in ~15 minutes
