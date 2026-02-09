@@ -45,14 +45,10 @@ This repo is the result of actually doing that, multiple times, on real deployme
 | Storage Box SSHFS + fstab + reconnect | 1-2 hours | Automated |
 | Hetzner Cloud firewall (Tailscale-only) | 15-30 min | Automated |
 | Coolify install (dirs, compose, SSH key) | 1-2 hours | Automated |
-| Debugging fail2ban vs Coolify containers | 30-60 min | Solved |
-| Debugging Coolify `getPublicKey()` error | 30-60 min | Solved |
-| Traefik DNS challenge for Tailscale domain | 1-2 hours | Documented (5 min) |
-| Immich deploy with storagebox volume | 30-60 min | Documented (10 min) |
 | Ubuntu version upgrade | 30-60 min | Automated |
-| **Total** | **~10-16 hours** | **~30 min** of manual steps |
+| **Total** | **~8-12 hours** | **~30 min** of manual steps |
 
-The ~30 minutes left (Coolify admin account, SSL config, Immich deploy via UI) is documented step-by-step. Rebuilding from scratch is `./scripts/deploy.sh`.
+The ~30 minutes left (Coolify admin account, SSL config, Immich deploy via UI) is documented step-by-step with gotchas already figured out. Rebuilding from scratch is `./scripts/deploy.sh`.
 
 ## Project Structure
 
