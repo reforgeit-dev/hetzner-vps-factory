@@ -210,8 +210,8 @@ sudo mkdir -p /mnt/storagebox/immich/uploads/{encoded-video,library,profile,thum
 1. Coolify dashboard → **Projects** → **Add** → **Add Resources** → **Services** → search **Immich**
 2. Set the Immich service URL to `https://immich.example.com:2283` — both `https://` and the internal port `:2283` are required in the Coolify service URL field
 3. Change the uploads volume from Docker volume to storagebox bind mount:
-   - Coolify's service UI does not allow editing volumes directly — use the **Docker Compose** editor in Coolify (or edit `/data/coolify/services/<service-id>/docker-compose.yml` on the server)
-   - In the `immich-server` service, change the uploads volume to:
+   - Volume mounts are **read-only** in the Coolify dashboard for compose-based services — edit your **Docker Compose file** in Coolify and reload
+   - In the `immich-server` service volumes, replace the named volume with a bind mount:
      ```yaml
      - /mnt/storagebox/immich/uploads:/usr/src/app/upload
      ```
