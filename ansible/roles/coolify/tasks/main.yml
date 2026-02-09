@@ -31,9 +31,46 @@
     - "{{ coolify_data_dir }}/proxy/dynamic"
     - "{{ coolify_data_dir }}/webhooks-during-maintenance"
 
-# SSH key generation is skipped intentionally.
-# Coolify's setup wizard generates its own key and adds it to
-# root's authorized_keys during the initial browser-based setup.
+# SSH key for Coolify to SSH to localhost (replicates install.sh Step 8/9).
+# The onboarding wizard expects this key to exist — it does NOT generate it.
+- name: Check if Coolify SSH key exists
+  stat:
+    path: "{{ coolify_data_dir }}/ssh/keys/id.root@host.docker.internal"
+  register: coolify_ssh_key
+
+- name: Generate Coolify SSH key
+  command: >
+    ssh-keygen -t ed25519 -a 100
+    -f {{ coolify_data_dir }}/ssh/keys/id.root@host.docker.internal
+    -q -N "" -C coolify
+  when: not coolify_ssh_key.stat.exists
+
+- name: Set SSH key ownership
+  file:
+    path: "{{ coolify_data_dir }}/ssh/keys/id.root@host.docker.internal"
+    owner: 9999
+    group: root
+    mode: '0600'
+  when: not coolify_ssh_key.stat.exists
+
+- name: Read Coolify public key
+  slurp:
+    src: "{{ coolify_data_dir }}/ssh/keys/id.root@host.docker.internal.pub"
+  register: coolify_pub_key
+  when: not coolify_ssh_key.stat.exists
+
+- name: Authorize Coolify key for root SSH
+  authorized_key:
+    user: root
+    key: "{{ coolify_pub_key.content | b64decode }}"
+    comment: coolify
+  when: not coolify_ssh_key.stat.exists
+
+- name: Remove public key file (Coolify derives it from private key)
+  file:
+    path: "{{ coolify_data_dir }}/ssh/keys/id.root@host.docker.internal.pub"
+    state: absent
+  when: not coolify_ssh_key.stat.exists
 
 - name: Download Coolify compose files
   get_url:
