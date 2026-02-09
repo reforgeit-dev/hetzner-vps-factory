@@ -261,13 +261,13 @@ The security roles implement multiple layers:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Each layer compensates for potential failures in others.
+If one layer fails, the others still block.
 
 ---
 
 ## Further Hardening
 
-The roles above provide a solid baseline. Below are example directions for making the setup even more secure, depending on your threat model.
+The roles above cover common attack surface. Further hardening depends on your threat model.
 
 | Area | Current State | Potential Improvement |
 |------|--------------|----------------------|
@@ -280,7 +280,7 @@ The roles above provide a solid baseline. Below are example directions for makin
 | **Backups** | Hetzner daily backups (unencrypted, provider-accessible) | Add encrypted offsite backups (e.g., S3 Glacier with client-side encryption) |
 | **Container images** | Floating tags (`:latest`, `:release`) | Pin image digests or use Dependabot/Renovate for controlled updates |
 
-None of these are required for a typical homelab setup, but they're worth considering if you're exposing services to the internet or storing sensitive data.
+Not needed for a Tailscale-only homelab. Relevant if you expose services publicly or store sensitive data.
 
 ---
 

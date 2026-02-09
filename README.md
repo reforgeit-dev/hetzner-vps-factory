@@ -1,15 +1,17 @@
 # Hetzner VPS Factory
 
-Terraform + Ansible toolkit for provisioning Hetzner Cloud VPS instances. Designed for **homelab use** — personal servers, self-hosted services, side projects. Not production-hardened (yet), but solid enough to run real workloads without worrying about the basics.
+Terraform + Ansible toolkit for provisioning Hetzner Cloud VPS instances. Designed for **homelab use** — personal servers, self-hosted services, side projects. Not production-hardened, but tested on real deployments and good enough to run actual workloads.
+
+Tested on Ubuntu 24.04 (with upgrades through 25.10). Other operating systems have not been tested.
 
 ## Why This Exists
 
 You can SSH into a VPS and set everything up by hand. You can ask an LLM to walk you through it. You'll get a working server — until you hit the first weird failure at 2am and spend an hour debugging.
 
-This repo is the result of actually doing that, multiple times, on real deployments. The value isn't the automation itself — it's the problems already solved:
+This repo is the result of actually doing that, multiple times, on real deployments. The problems below are already solved:
 
 **Security that's easy to skip manually:**
-- SSH key-only auth with fail2ban (3 strikes, 1hr ban) — not just installed but tuned
+- SSH key-only auth with fail2ban (3 strikes, 1hr ban)
 - Kernel hardening via sysctl (ASLR, SYN flood protection, ICMP redirects disabled)
 - UFW firewall with rate-limited SSH + Tailscale-only access
 - Unattended security upgrades with auto-reboot
@@ -28,23 +30,25 @@ This repo is the result of actually doing that, multiple times, on real deployme
 
 **Time saved:**
 
-| Task | Manual (SSH + docs) | With this repo |
-|------|---------------------|----------------|
-| SSH key-only auth, disable password | 15-30 min | Automated |
-| fail2ban install + configure | 20-30 min | Automated |
-| Kernel hardening (sysctl) | 30-60 min | Automated |
-| UFW firewall + unattended upgrades | 20-30 min | Automated |
-| Non-root user with sudo | 10-15 min | Automated |
-| Swap file setup + tuning | 10-15 min | Automated |
-| Docker + Compose V2 | 15-30 min | Automated |
-| Tailscale install + auth | 10-15 min | Automated |
-| Storage Box SSHFS + fstab + reconnect | 1-2 hours | Automated |
-| Hetzner Cloud firewall (Tailscale-only) | 15-30 min | Automated |
-| Coolify install (dirs, compose, SSH key) | 1-2 hours | Automated |
-| Ubuntu version upgrade | 30-60 min | Automated |
-| **Total** | **~8-12 hours** | **~30 min** of manual steps |
+All of the following is handled by `deploy.sh`:
 
-The ~30 minutes left (Coolify admin account, SSL config, Immich deploy via UI) is documented step-by-step with gotchas already figured out. Rebuilding from scratch is `./scripts/deploy.sh`.
+| Task | Manual time (SSH + docs) |
+|------|--------------------------|
+| SSH key-only auth, disable password | 15-30 min |
+| fail2ban install + configure | 20-30 min |
+| Kernel hardening (sysctl) | 30-60 min |
+| UFW firewall + unattended upgrades | 20-30 min |
+| Non-root user with sudo | 10-15 min |
+| Swap file setup + tuning | 10-15 min |
+| Docker + Compose V2 | 15-30 min |
+| Tailscale install + auth | 10-15 min |
+| Storage Box SSHFS + fstab + reconnect | 1-2 hours |
+| Hetzner Cloud firewall (Tailscale-only) | 15-30 min |
+| Coolify install (dirs, compose, SSH key) | 1-2 hours |
+| Ubuntu version upgrade | 30-60 min |
+| **Total** | **~8-12 hours** |
+
+The ~30 minutes of manual steps left (Coolify admin account, SSL config, Immich deploy via UI) are documented step-by-step in the setup guide.
 
 ## Project Structure
 
