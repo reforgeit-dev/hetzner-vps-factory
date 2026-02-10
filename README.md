@@ -102,8 +102,8 @@ hetzner-vps-factory/
 
 ## Prerequisites
 
-- Terraform >= 1.0
-- Ansible >= 2.9
+- Terraform >= 1.0 — install with [tfswitch](https://github.com/warrensbox/terraform-switcher) (`brew install warrensbox/tap/tfswitch`, then `tfswitch` to pick a version)
+- Ansible >= 2.9 — install with [uv](https://docs.astral.sh/uv/): `uv tool install ansible-core` or use `uvx` wrappers (see below)
 - jq, hcloud CLI
 - SSH key pair (`~/.ssh/id_ed25519`)
 - A domain with a DNS provider that supports ACME DNS challenge — needed for SSL on Tailscale-only domains (HTTP challenge can't reach Tailscale IPs). Tested with **Cloudflare**. Any provider supported by [LEGO](https://go-acme.github.io/lego/dns/) (100+) should work — avoid GoDaddy (API access restrictions). See [Traefik DNS challenge docs](https://doc.traefik.io/traefik/reference/install-configuration/tls/certificate-resolvers/acme/).
@@ -115,6 +115,22 @@ export TF_VAR_hcloud_token="your-hetzner-api-token"   # used by Terraform provid
 export TAILSCALE_AUTH_KEY="tskey-auth-xxxxx"           # used by Ansible
 export TF_VAR_tailscale_auth_key="tskey-auth-xxxxx"   # used by Terraform (if needed)
 ```
+
+### Ansible via uvx wrappers
+
+If you use `uv` and don't want a global Ansible install, create wrapper scripts in `~/.local/bin/`:
+
+```bash
+for cmd in ansible ansible-playbook ansible-inventory; do
+  cat > ~/.local/bin/$cmd <<EOF
+#!/bin/bash
+exec uvx --from ansible-core $cmd "\$@"
+EOF
+  chmod +x ~/.local/bin/$cmd
+done
+```
+
+This runs Ansible on demand via `uvx` without a persistent install. Make sure `~/.local/bin` is on your `PATH`.
 
 ### Terraform State Backend
 
