@@ -124,7 +124,7 @@ If you use `uv` and don't want a global Ansible install, create wrapper scripts 
 for cmd in ansible ansible-playbook ansible-inventory; do
   cat > ~/.local/bin/$cmd <<EOF
 #!/bin/bash
-exec uvx --from ansible-core $cmd "\$@"
+exec uvx --from ansible-core==2.20.2 $cmd "\$@"
 EOF
   chmod +x ~/.local/bin/$cmd
 done
