@@ -127,7 +127,10 @@ S3 backend (`terraform/backend.tf`) is optional but recommended for shared/persi
 cp terraform/envs/immich.tfvars.example terraform/envs/immich.tfvars
 # Edit terraform/envs/immich.tfvars with your server_name, server_type, etc.
 
-# 2. Deploy (immich profile by default)
+# 2. Edit ansible/group_vars/immich.yml
+# Set tailscale_hostname, hetzner_server_name (must match server_name in .tfvars)
+
+# 3. Deploy (immich profile by default)
 ./scripts/deploy.sh
 ```
 
