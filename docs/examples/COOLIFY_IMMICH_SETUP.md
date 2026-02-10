@@ -232,7 +232,7 @@ Coolify self-updates via the dashboard (Settings → Update).
 
 In Coolify dashboard → Immich service → **Redeploy** to pull latest `release` tag.
 
-### Manual Postgres Backup
+### Manual Postgres Backup (untested)
 
 ```bash
 # Dump Immich database
@@ -317,6 +317,13 @@ ssh <user>@<tailscale-hostname> "sudo docker inspect coolify-proxy --format '{{.
 ```
 
 ### Restart Everything
+
+Use the Coolify UI whenever possible — it tracks state and avoids compose drift:
+
+- **Immich**: Coolify dashboard → Immich service → **Restart** (or **Stop** / **Start**)
+- **Traefik**: Coolify dashboard → Servers → your server → **Proxy** tab → **Restart**
+
+SSH fallback if Coolify UI is down:
 
 ```bash
 # Restart just Immich (via Coolify compose)
