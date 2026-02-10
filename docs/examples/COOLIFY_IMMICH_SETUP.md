@@ -191,7 +191,7 @@ Traefik defaults to HTTP challenge, which won't work with Tailscale IPs. Switch 
    ```
 4. Save — Coolify recreates the Traefik container automatically (important: a plain `docker compose restart` would NOT pick up command changes — the container must be recreated)
 
-The Cloudflare API token needs **Zone:DNS:Edit** permission for the domain.
+The Cloudflare API token needs **Zone:Read** and **DNS:Edit** permissions for the domain.
 
 ### 4. Deploy Immich
 
